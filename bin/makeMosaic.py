@@ -16,7 +16,7 @@ from Scientific.IO import NetCDF
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.9
+##  beta version: 0.96
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -94,7 +94,7 @@ class filePart(object):
 
    def parse_avhrr(self, fparts, fplen, idx):
       """ parse the avhrr file name for information. """
-      avhrr_dict = {'ch1':.64,'ch2':.86,'ch3a':1.6,'ch3b':3.7,'ch4':11,'ch5':12}
+      avhrr_dict = {'ch1':'.64','ch2':'.86','ch3a':'1.6','ch3b':'3.7','ch4':'11','ch5':'12'}
       self.stype = "avhrr"
       try:
          self.chnl = avhrr_dict[fparts[idx+4]]
@@ -107,8 +107,8 @@ class filePart(object):
 
    def parse_metopb(self, fparts, fplen, idx):
       """ parse the avhrr file name for information. """
-      metop_dict = {'band1':.64,'band2':.86,'band3a':1.6,'band3b':3.7,
-            'band4':11,'band5':12}
+      metop_dict = {'band1':'.64','band2':'.86','band3a':'1.6','band3b':'3.7',
+            'band4':'11','band5':'12'}
       self.stype = "avhrr"
       try:
          self.chnl = metop_dict[fparts[idx+4]]
@@ -121,9 +121,9 @@ class filePart(object):
 
    def parse_viirs(self, fparts, fplen, idx):
       """ parse the viirs file name for information. """
-      viirs_dict = {'i01':.64,'i02':.86,'i03':1.6,'i04':3.7,'i05':11,
-            'm03':.49,'m04':.56,'m05':.67,'m09':1.4,'m11':2.2,'m13':4.0,
-            'm14':8.6,'m15':10.8,'m16':12}
+      viirs_dict = {'i01':'.64','i02':'.86','i03':'1.6','i04':'3.7','i05':'11',
+            'm03':'.49','m04':'.56','m05':'.67','m09':'1.4','m11':'2.2','m13':'4.0',
+            'm14':'8.6','m15':'10.8','m16':'12'}
       self.stype = "viirs"
       try:
          self.chnl = viirs_dict[fparts[idx+4]]
@@ -138,18 +138,12 @@ class filePart(object):
       """ parse the viirs file name for information. """
       mirs_dict = {'mirs':'rainrate','rain':'rainrate','tpw':'tpw','sea':'seaice','snow':'snowcover',
 	    'clw':'clw','swe':'swe',}
-      # differentiate between mhs and atms
+      # differentiate between amsua-mhs and atms
       if fparts[idx+3] == "atms":
          self.stype = "atms"
       else:
          self.stype = "amsu"
  
-      #if fparts[idx+3] == "mhs":
-      #   self.stype = "mhs"
-      #elif fparts[idx+3] == "amsua-mhs":
-      #   self.stype = "amsu"
-      #else:
-      #   self.stype = "atms"
       # assign single string channel name
       try:
          self.chnl = mirs_dict[fparts[idx+4]]
@@ -173,9 +167,9 @@ class filePart(object):
 
    def parse_modis(self, fparts, fplen, idx):
       """ parse the modis file name for information. """
-      modis_dict = {'vis01':.64,'vis02':.86,'vis03':.47,'vis04':.56,
-                 'vis06':1.6,'vis07':2.2,'vis13':.67,'bt20':3.7,'bt23':4.0,
-                 'bt27':6.7,'bt28':7.3,'bt29':8.6,'bt30':9.7,'bt31':11,'bt32':12}
+      modis_dict = {'vis01':'.64','vis02':'.86','vis03':'.47','vis04':'.56',
+                 'vis06':'1.6','vis07':'2.2','vis13':'.67','bt20':'3.7','bt23':'4.0',
+                 'bt27':'6.7','bt28':'7.3','bt29':'8.6','bt30':'9.7','bt31':'11','bt32':'12'}
       self.stype = "modis"
       self.stype = fparts[idx+3]
       try:
@@ -251,7 +245,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s 0.95')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -447,7 +441,9 @@ def lastdelta(srcpath):
    pixcnt = numpy.sum(pixdata != 0)
    if pixcnt > 0:
       pixmin = numpy.min(pixdata[numpy.nonzero(pixdata)])
-   delsecs = pixel2timedif(pixmin)
+      delsecs = pixel2timedif(pixmin)
+   else:
+      delsecs = 0
 
    return delsecs 
    #
@@ -505,9 +501,8 @@ def timedif2pixel(secdif):
    # using eq: ((difsec-minsec)/maxsec-minsec) * 255
    tdif = float(secdif)  # csec is current time & fsec is file time
    # short version of eq: pixdif = int((tdif/86400.) * 255.)
-   #pixdif = int(tdif * .00295)
    pixdif = int(tdif * .002778)
-   print "CONVERT TIME TO HRS  secdif={}  tdif={} pdif={}".format(secdif, tdif, pixdif)
+   #print "CONVERT TIME TO HRS  secdif={}  tdif={} pdif={}".format(secdif, tdif, pixdif)
    # make sure pixel values for time differences fall within limits 
    if pixdif > 255:
       pixdif = 255
@@ -542,36 +537,36 @@ def main():
    tmpDir = "." # temp storage for building mosaic until moved to ingest
    #tmpDir = "." # temp storage for building mosaic until moved to ingest
    #tmpDir = "/tmp" # temp storage for building mosaic until moved to ingest
-   backhrs = 26             # hours back from current time to check files for composite
+   backhrs = 6             # hours back from current time to check files for composite
    # Possible mosaicDict bands: .49,.56,.64,.67,.86,1.4,1.6,2.2,3.7,4.0,6.7,7.3,8.6,9.7,10.8,11,12
    # Possible sensors: viirs, modis, avhrr
    mosaicDict = {         # channel and sensors that are to used for the mosaic
-     .64 : ('viirs','modis','avhrr'),
-    #  .86 : ('viirs','modis'),
-    #  1.6 : ('viirs','modis'),
-    #  3.7 : ('viirs','modis','avhrr'),
-    #  6.7 : ('modis'),
-      11 : ('viirs','modis','avhrr'),
-    #  12 : ('viirs','modis','avhrr'),
-      "tpw": ('atms','mhs'),
-    #  "swe": ('atms','mhs'),
-    #  "clw": ('atms','mhs'),
-      "rainrate": ('atms','mhs'),
-      "seaice": ('atms','mhs'),
-    #  "snowcover": ('atms','mhs'),
+    # ".64" : ('viirs','modis','avhrr'),
+    # ".86" : ('viirs','modis'),
+    # "1.6" : ('viirs','modis'),
+      "3.7" : ('viirs','modis','avhrr'),
+    # "6.7" : ('modis'),
+      "11" : ('viirs','modis','avhrr'),
+    #  "12" : ('viirs','modis','avhrr'),
+      "tpw": ('atms','amsu'),
+    #  "swe": ('atms','amsu'),
+    #  "clw": ('atms','amsu'),
+      "rainrate": ('atms','amsu'),
+    #  "seaice": ('atms','amsu'),
+    #  "snowcover": ('atms','amsu'),
     #  "ITOP": ('viirsice','modisice'),
     #  "IBOT": ('viirsice','modisice'),
     #  "IIND": ('viirsice','modisice'),
    }
    timeDeltaFlag = 1     # toggle on/off the creation of time/delta flag
    timeDeltaDict = {     # max time (hrs) for passes used in composites for each channel
-      .64: 12,
-      .86: 12,
-      1.6: 12,
-      3.7: 24,
-       11: 24,
-       12: 24,
-      "rainrate":24,
+      ".64": 12,
+      ".86": 12,
+      "1.6": 12,
+      "3.7": 24,
+      "11": 24,
+      "12": 24,
+      "rainrate":6,
       "seaice":24,
       "snowcover":24,
       "tpw":24,
@@ -628,7 +623,7 @@ def main():
             fname = thisfile.parse_name()
             filesecs = thisfile.filesecs()
             #print "filesecs={} backsecs={}".format(filesecs, backsecs)
-            #print "sensor=",thisfile.sensor()
+            #print "sensor={} mosaicsensor={}".format(thisfile.sensor(),mosaicSensor)
             #print "channel={} mosaicchl={}".format(thisfile.channel(),mosaicChl)
             # step through "data_store" pathnames and save the recent ones
             # separating mosaic paths from single band paths
@@ -647,7 +642,7 @@ def main():
                      mdcnt += 1
                   elif thisfile.sensor() in mosaicSensor:
                      if args.verbose:
-                        print "SENSOR"
+                        print "SENSOR DATA"
                      saved_paths.append('{0}.{1}'.format(filesecs,path))
                      cnt += 1
 
@@ -664,7 +659,7 @@ def main():
       if timeDeltaFlag:
 	   mosaicDelPathname="{0}/Alaska_UAF_AWIPS_mosaicdelta_{1}_{2}.nc".format(
               tmpDir,mosaicChl,curddtt)
-           print "New mosaic time delta name: ",mosaicPathname
+           print "New mosaic time delta name: ",mosaicDelPathname
 
       # sort the directory list 
       saved_paths.sort()
@@ -690,7 +685,7 @@ def main():
       # Use a the modified mosaic name to check if there is a previous delta file to use  
       # instead. If not found, single band file will remain 
       mosDeltaFile = os.path.basename(prevMosaicPath[2]).replace("mosaic","mosaicdelta")
-      print "SEARCH STRING={}".format(mosDeltaFile)
+      # print "SEARCH STRING={}".format(mosDeltaFile)
       if mdcnt > 0:
          for pdpath in mosaicdel_paths:
             #print "pdpath={}".format(os.path.basename(pdpath))
@@ -732,7 +727,8 @@ def main():
       if mdcnt > 0:
          pixtimedel = timedif2pixel(cursecs - int(prevMosDelPath[0]))
          pixtdelmax = timedif2pixel(ageLimit) 
-         print "TIMEDEL={}  DELMAX={}".format(pixtimedel, pixtdelmax)
+         if args.verbose:
+            print "TIMEDELTA={}  MAXDELTA={}".format(pixtimedel, pixtdelmax)
          update_timedelta(fh_tdeldest,prevMosDelPath[2],mosaicDelPathname,pixtimedel,pixtdelmax)
 
       ## Now step through the list of more recent single band data
@@ -740,13 +736,15 @@ def main():
       for dspath in saved_paths:
          lastPassPath = dspath.partition(".")
          thissecs = int(lastPassPath[0])
-         print "thissecs={}  diff={}".format(thissecs, (thissecs - refsecs))
+         if args.verbose:
+            print "thissecs={}  diff={}".format(thissecs, (thissecs - refsecs))
          if thissecs >= refsecs:
-            print "MERGING!!!"
+            #print "MERGING!!!"
             merge_files(fh_dest,lastPassPath[2],mosaicPathname)
             if timeDeltaFlag:
                pixtimedel = timedif2pixel(cursecs - thissecs)
-               print "TIMEDEL={} csecs={} fsecs={}".format(pixtimedel,cursecs,thissecs)
+               if args.verbose:
+                  print "TIMEDELTA={} cursecs={} filesecs={}".format(pixtimedel,cursecs,thissecs)
                merge_delta_files(fh_tdeldest,lastPassPath[2],mosaicDelPathname,pixtimedel)
 
       #
