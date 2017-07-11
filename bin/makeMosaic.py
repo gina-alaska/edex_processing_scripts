@@ -16,7 +16,7 @@ from Scientific.IO import NetCDF
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.96
+##  beta version: 0.96-B
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -51,19 +51,21 @@ class filePart(object):
       # This section is for AVHRR
       elif fparts[idx+2] == "AVHRR-AK":
          self.parse_avhrr(fparts, fplen, idx)
+     # This is for AMSU microwave
+      elif fparts[idx+3] == "amsua-mhs":
+         self.parse_mirs(fparts, fplen, idx)
+     # This is for MHS microwave
+      elif fparts[idx+2] == "MHS":
+         self.parse_mirs(fparts, fplen, idx)
       # This is for METOPB
       elif fparts[idx+2] == "metopb":
          self.parse_metopb(fparts, fplen, idx)
-      # This is for SNPP VIIRS or ATMS
+     # This is for ATMS microwave
+      elif fparts[idx+3] == "atms":
+         self.parse_mirs(fparts, fplen, idx)
+      # This is for SNPP VIIRS 
       elif fparts[idx+2] == "npp":
-         if fparts[idx+3] == "atms":
-            self.parse_mirs(fparts, fplen, idx)
-         elif fparts[idx+3] == "mhs":
-            self.parse_mirs(fparts, fplen, idx)
-         elif fparts[idx+3] == "amsua-mhs":
-            self.parse_mirs(fparts, fplen, idx)
-         else:
-            self.parse_viirs(fparts, fplen, idx)
+         self.parse_viirs(fparts, fplen, idx)
       # This is for MOSAICS
       elif fparts[idx+2] == "mosaic":
          self.parse_mosaic(fparts, fplen, idx)
@@ -245,7 +247,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96-B')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -533,8 +535,8 @@ def main():
 
    ##################  Configuration section ########################
    dataStoreDir = "/data_store/manual/regionalsat"  # source for data to mosaic
-   #tmpDir = "/data_store/download" # temp storage for building mosaic until moved to ingest
-   tmpDir = "." # temp storage for building mosaic until moved to ingest
+   tmpDir = "/data_store/download" # temp storage for building mosaic until moved to ingest
+   #tmpDir = "." # temp storage for building mosaic until moved to ingest
    #tmpDir = "." # temp storage for building mosaic until moved to ingest
    #tmpDir = "/tmp" # temp storage for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
