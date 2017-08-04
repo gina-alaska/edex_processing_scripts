@@ -43,6 +43,7 @@ def main():
         raise SystemExit
     #
     filepath = args.filepath
+    filenm = os.path.basename(filepath)
     #print "Valid filepath: {}".format(curtime.strftime("%Y%m"),args.day, filepath)
     #
     ################################################
@@ -72,7 +73,6 @@ def main():
     if "SSEC" in filepath:
        # determine the filepath directory and base names
        dirnm = os.path.dirname(filepath)
-       filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
        if ".nc" in basenm:
