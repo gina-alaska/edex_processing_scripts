@@ -49,6 +49,8 @@ class MyHTMLParser(HTMLParser):
                   didx = 8
                elif seg[4] == 'snow':
                   didx = 8
+               elif seg[4] == 'btemp':
+                  didx = 8
                #
                #
                if verbose:
