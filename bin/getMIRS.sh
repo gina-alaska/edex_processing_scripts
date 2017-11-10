@@ -32,25 +32,24 @@ eexit() {
 }
 
 main() {
-#
-datatype="$1"
-echo "+++++ Starting MIRS download - `date` ++++++"
-# CHECK IF EDEX IS UP
-edex_ingest_ps=`ps aux | grep ingest | grep -v ingestGrib | grep -v ingestDat | awk '{ print $15 }'`
-if [ -z $edex_ingest_ps ]; then
+   #
+   echo "+++++ Starting MIRS download - `date` ++++++"
+   # CHECK IF EDEX IS UP
+   edex_ingest_ps=`ps aux | grep ingest | grep -v ingestGrib | grep -v ingestDat | awk '{ print $15 }'`
+   if [ -z $edex_ingest_ps ]; then
 	echo 'EDEXingest is not running. Exiting... No downloads attempted. '
         exit
-else
+   else
 	edex_ingest_pid=`ps aux | grep ingest | grep -v ingestGrib | grep -v ingestDat | awk '{ print $2 }'`
 	echo 'EDEXingest is running :: pid '$edex_ingest_pid''
-fi
-#
-
-/home/awips/bin/getMIRS.py 
-
-#
-ddtt=`date +%Y%m%d`
-echo "===== End MIRS download - `date` ======"
+   fi
+   #
+   toolDir='/home/awips/bin'
+   echo "Running: $toolDir/getMIRS.py"
+   $toolDir/getMIRS.py 
+   #
+   ddtt=`date +%Y%m%d`
+   echo "===== End MIRS download - `date` ======"
 }
 main
 #

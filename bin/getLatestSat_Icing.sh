@@ -46,10 +46,11 @@ main() {
    fi
    #
    ingestDir="/awips2/edex/data/manual"
+   toolDir="/home/awips/bin"
    #
    cd $ingestDir
-   echo "/home/awips/bin/getIcingSat.py $@"
-   /home/awips/bin/getIcingSat.py $@
+   echo "Running: $toolDir/getIcingSat.py $@"
+   $toolDir/getIcingSat.py $@
    #
    echo "Ingest directory:"
    ls $ingestDir

@@ -35,7 +35,6 @@ main() {
    lock $PROGNAME \
         || eexit "Only one instance of $PROGNAME can run at one time."
    #
-   datatype="$1"
    # CHECK IF EDEX IS UP
    edex_ingest_ps=`ps aux | grep ingest | grep -v ingestGrib | grep -v ingestDat | awk '{ print $15 }'`
    if [ -z $edex_ingest_ps ]; then
@@ -46,8 +45,9 @@ main() {
 	echo 'EDEXingest is running :: pid '$edex_ingest_pid''
    fi
    #
-   echo "Running: /home/awips/bin/getSST.py"
-   /home/awips/bin/getSST.py 
+   toolDir='/home/awips/bin'
+   echo "Running: $toolDir/getSST.py"
+   $toolDir/getSST.py 
    #
    ddtt=`date +%Y%m%d`
    echo "===== End ACSPO SST download - `date` ======"
