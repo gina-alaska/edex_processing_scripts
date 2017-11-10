@@ -82,7 +82,7 @@ def _process_command_line():
         '-bm', '--backmins', type=int, action='store', default=6,
         help='num mins back to consider')
     parser.add_argument(
-        '-v', '--verbose', action='store_false', help='verbose flag'
+        '-v', '--verbose', action='store_true', help='verbose flag'
     )
 
     args = parser.parse_args()

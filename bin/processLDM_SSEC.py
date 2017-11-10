@@ -54,19 +54,19 @@ def main():
        raise SystemExit
     ################################################
     # this section is only for support of remote file downloads (i.e. by carl)
-    if "RIVER" in filepath:
-       queueDir = "/data_store/ldmqueue"
-       if not os.path.exists(queueDir):
-          os.makedirs(queueDir)
-          os.chmod(queueDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-       fnum = len(os.listdir(queueDir))
-       if fnum < queueLimit:
-          print "copying {} to {}".format(filepath, queueDir)
-          copy(filepath,queueDir)
-          quefilepath = '{}/{}'.format(queueDir, filenm)
-          os.chmod(quefilepath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-       else:
-          print "Skip copy. Too many files in queue: {}".format(fnum)
+    #if "RIVER" in filepath:
+    #   queueDir = "/data_store/ldmqueue"
+    #   if not os.path.exists(queueDir):
+    #      os.makedirs(queueDir)
+    #      os.chmod(queueDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+    #   fnum = len(os.listdir(queueDir))
+    #   if fnum < queueLimit:
+    #      print "copying {} to {}".format(filepath, queueDir)
+    #      copy(filepath,queueDir)
+    #      quefilepath = '{}/{}'.format(queueDir, filenm)
+    #      os.chmod(quefilepath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+    #   else:
+    #      print "Skip copy. Too many files in queue: {}".format(fnum)
     ################################################
 
     # look for "SSEC" in file path to indicate compression is needed even tho ".gz" is missing
