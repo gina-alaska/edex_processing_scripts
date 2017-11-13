@@ -97,7 +97,7 @@ def _process_command_line():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'dataset', nargs='+', choices=['goes','polar','all'],
+        'dataset', nargs='?', choices=['goes','polar','all'], default='all',
         help='satellite Icing products to download'
     )
     parser.add_argument(
@@ -118,8 +118,8 @@ def main ():
    global dataset, verbose
 
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++##
-   queue_paths = ['http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/modis/awips2-nc/',
-                'http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/goesw/awips2-nc/']
+   queue_paths = ['http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/modis/awips2-nc',
+                'http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/goesw/awips2-nc']
    backmins = 80   # minutes back from current time to download
    reftime = datetime.utcnow() - timedelta(minutes=backmins)
    #doy_now = datetime.utcnow().timetuple().tm_yday
@@ -162,10 +162,11 @@ def main ():
             #print "stime={}  rtime={}  diff={}".format(sattime, refsecs, tdif)
             if sattime > refsecs:
                dataurl = "{}/{}".format(queue_url,fname)
+               fname_new = "Alaska_{}".format(fname)
                print "Downloading: %s" %(dataurl)
-               urllib.urlretrieve(dataurl, fname)
-               if os.path.isfile(fname):
-                  fsize = os.path.getsize(fname)
+               urllib.urlretrieve(dataurl, fname_new)
+               if os.path.isfile(fname_new):
+                  fsize = os.path.getsize(fname_new)
                   dcount += 1
                else:
                   fsize = 0
