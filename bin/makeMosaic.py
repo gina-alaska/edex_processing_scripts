@@ -16,7 +16,7 @@ from Scientific.IO import NetCDF
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.96-B
+##  beta version: 0.96-C
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -51,11 +51,11 @@ class filePart(object):
       # This section is for AVHRR
       elif fparts[idx+2] == "AVHRR-AK":
          self.parse_avhrr(fparts, fplen, idx)
+      # This section is for avhrr sst which is the same format as metop-b avhrr
+      elif fparts[idx+2] == "avhrr":
+         self.parse_metopb(fparts, fplen, idx)
      # This is for AMSU microwave
       elif fparts[idx+3] == "amsua-mhs":
-         self.parse_mirs(fparts, fplen, idx)
-     # This is for MHS microwave
-      elif fparts[idx+2] == "MHS":
          self.parse_mirs(fparts, fplen, idx)
       # This is for METOPB
       elif fparts[idx+2] == "metopb":
@@ -96,7 +96,8 @@ class filePart(object):
 
    def parse_avhrr(self, fparts, fplen, idx):
       """ parse the avhrr file name for information. """
-      avhrr_dict = {'ch1':'.64','ch2':'.86','ch3a':'1.6','ch3b':'3.7','ch4':'11','ch5':'12'}
+      avhrr_dict = {'ch1':'.64','ch2':'.86','ch3a':'1.6','ch3b':'3.7','ch4':'11','ch5':'12',
+	   'sst':'sst'}
       self.stype = "avhrr"
       try:
          self.chnl = avhrr_dict[fparts[idx+4]]
@@ -110,7 +111,7 @@ class filePart(object):
    def parse_metopb(self, fparts, fplen, idx):
       """ parse the avhrr file name for information. """
       metop_dict = {'band1':'.64','band2':'.86','band3a':'1.6','band3b':'3.7',
-            'band4':'11','band5':'12'}
+            'band4':'11','band5':'12','sst':'sst'}
       self.stype = "avhrr"
       try:
          self.chnl = metop_dict[fparts[idx+4]]
@@ -125,7 +126,7 @@ class filePart(object):
       """ parse the viirs file name for information. """
       viirs_dict = {'i01':'.64','i02':'.86','i03':'1.6','i04':'3.7','i05':'11',
             'm03':'.49','m04':'.56','m05':'.67','m09':'1.4','m11':'2.2','m13':'4.0',
-            'm14':'8.6','m15':'10.8','m16':'12'}
+            'm14':'8.6','m15':'10.8','m16':'12','sst':'sst'}
       self.stype = "viirs"
       try:
          self.chnl = viirs_dict[fparts[idx+4]]
@@ -139,7 +140,7 @@ class filePart(object):
    def parse_mirs(self, fparts, fplen, idx):
       """ parse the viirs file name for information. """
       mirs_dict = {'mirs':'rainrate','rain':'rainrate','tpw':'tpw','sea':'seaice','snow':'snowcover',
-	    'clw':'clw','swe':'swe',}
+	    'clw':'clw','swe':'swe'}
       # differentiate between amsua-mhs and atms
       if fparts[idx+3] == "atms":
          self.stype = "atms"
@@ -171,7 +172,8 @@ class filePart(object):
       """ parse the modis file name for information. """
       modis_dict = {'vis01':'.64','vis02':'.86','vis03':'.47','vis04':'.56',
                  'vis06':'1.6','vis07':'2.2','vis13':'.67','bt20':'3.7','bt23':'4.0',
-                 'bt27':'6.7','bt28':'7.3','bt29':'8.6','bt30':'9.7','bt31':'11','bt32':'12'}
+                 'bt27':'6.7','bt28':'7.3','bt29':'8.6','bt30':'9.7','bt31':'11','bt32':'12',
+		 'sst':'sst'}
       self.stype = "modis"
       self.stype = fparts[idx+3]
       try:
@@ -247,7 +249,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96-B')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96-C')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -308,6 +310,8 @@ def openDestinationFile(destpath, channel):
       chstr = "CLW"
    elif channel == "rainrate":
       chstr = "rainrate"
+   elif channel == "sst":
+      chstr = "SST"
    else:
       chstr = "{0} um".format(channel)
 
@@ -537,16 +541,16 @@ def main():
    dataStoreDir = "/data_store/manual/regionalsat"  # source for data to mosaic
    tmpDir = "/data_store/download" # temp storage for building mosaic until moved to ingest
    #tmpDir = "." # temp storage for building mosaic until moved to ingest
-   #tmpDir = "." # temp storage for building mosaic until moved to ingest
    #tmpDir = "/tmp" # temp storage for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
    # Possible mosaicDict bands: .49,.56,.64,.67,.86,1.4,1.6,2.2,3.7,4.0,6.7,7.3,8.6,9.7,10.8,11,12
+   # Possible mosaicDict products: tpw,swe,clw,rainrate,seaice,snowcover,sst,ITOP,IBOT,IIND 
    # Possible sensors: viirs, modis, avhrr
    mosaicDict = {         # channel and sensors that are to used for the mosaic
     # ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
-      "3.7" : ('viirs','modis','avhrr'),
+    #  "3.7" : ('viirs','modis','avhrr'),
     # "6.7" : ('modis'),
       "11" : ('viirs','modis','avhrr'),
     #  "12" : ('viirs','modis','avhrr'),
@@ -556,6 +560,7 @@ def main():
       "rainrate": ('atms','amsu'),
     #  "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
+      "sst": ('viirs','modis','avhrr'),
     #  "ITOP": ('viirsice','modisice'),
     #  "IBOT": ('viirsice','modisice'),
     #  "IIND": ('viirsice','modisice'),
@@ -574,6 +579,7 @@ def main():
       "tpw":24,
       "swe":24,
       "clw":24,
+      "sst":36,
       "ITOP": 24, 
       "IBOT": 24,
       "IIND": 24,
