@@ -101,7 +101,7 @@ def _process_command_line():
         help='satellite Icing products to download'
     )
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=6,
+        '-bm', '--backmins', type=int, action='store', default=90,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -120,18 +120,15 @@ def main ():
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++##
    queue_paths = ['http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/modis/awips2-nc',
                 'http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/goesw/awips2-nc']
-   backmins = 80   # minutes back from current time to download
-   reftime = datetime.utcnow() - timedelta(minutes=backmins)
-   #doy_now = datetime.utcnow().timetuple().tm_yday
-   #print "DOY=",doy_now
-   refsecs = reftime.strftime("%s")
-
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++##
-   print "Reference time: ",reftime
-   #
+
    args = _process_command_line()
    verbose = args.verbose
-   #verbose = True
+
+   reftime = datetime.utcnow() - timedelta(minutes=args.backmins)
+   refsecs = reftime.strftime("%s")
+   print "Reference time: ",reftime
+   #
    dataset = args.dataset
  
    # instantiate the parser and feed it the HTML page

@@ -112,7 +112,7 @@ def _process_command_line():
         default='all', help='product groups to download'
     )
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=6,
+        '-bm', '--backmins', type=int, action='store', default=70,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -131,16 +131,16 @@ def main ():
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++##
    queue_url = "http://ldm.gina.alaska.edu/queue/exp"
    src_url = "http://ldm.gina.alaska.edu/data/ldm/exp"
-   backmins = 61   # hours back from current time to download
-   reftime = datetime.utcnow() - timedelta(minutes=backmins)
-   refsecs = reftime.strftime("%s")
-
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++##
-   print "Reference time: ",reftime
-   #
+
    args = _process_command_line()
    verbose = args.verbose
-   #verbose = True
+
+   reftime = datetime.utcnow() - timedelta(minutes=args.backmins)
+   refsecs = reftime.strftime("%s")
+
+   print "Reference time: ",reftime
+   #
    dataset = args.dataset
    if all in dataset:
       dataset.append(sport)
