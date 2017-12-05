@@ -39,21 +39,17 @@ class MyHTMLParser(HTMLParser):
          if len(seg) > 2:
             if verbose:
                print "FILE: {} ".format(dline)
-            if seg[0] == 'UAF' and seg[4] == 'sst':
+            if seg[0] == 'UAF':
                didx = 6
-               #
-               #
                if verbose:
                   print "Seg={} Date: {}".format(didx,seg[didx])
-               yr = int(seg[didx][0:4])
-               mo = int(seg[didx][4:6])
-               da = int(seg[didx][6:8])
+               yr = int(seg[didx][0:2]) + 2000
+               mo = int(seg[didx][2:4])
+               da = int(seg[didx][4:6])
                hr = int(seg[didx+1][0:2])
                mn = int(seg[didx+1][2:4])
                try:
                   ftime = datetime(yr, mo, da, hr, mn)
-                  #print " --- Data ftime: {}".format(ftime)
-                  #datetime.strptime(ddttstr, "%Y%m%d_%H%M")
                except ValueError:
                   print "Invalid date format"
                   print "Date vars: {}/{}/{} {}:{}".format(mo,da,yr,hr,mn)
@@ -68,8 +64,7 @@ class MyHTMLParser(HTMLParser):
                   print "Saved data URL"
                   print " --- Data ftime: {} secs=()".format(ftime, fsecs)
             else:
-               if verbose:
-		  print "++++ UNKNOWN PRODUCT {} ++++".format(dline)
+               print "++++ UNKNOWN PRODUCT ++++"
                continue
 
 
@@ -101,8 +96,7 @@ def main ():
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++##
    ingestDir = "/awips2/edex/data/manual"
    downloadDir = "/data_store/download"
-   queue_url = "http://hippy.gina.alaska.edu/distro/processing/imagery/awips_acspo/"
-   src_url = "http://hippy.gina.alaska.edu/distro/processing/imagery/awips_acspo/"
+   queue_url = "http://hippy.gina.alaska.edu/distro/cira/sample_awips"
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++##
    args = _process_command_line()
    verbose = args.verbose
@@ -110,7 +104,6 @@ def main ():
    reftime = datetime.utcnow() - timedelta(minutes=args.backmins)
    refsecs = reftime.strftime("%s")
 
-   #verbose = True
    if verbose:
       print "Reference time: ",reftime
    #
@@ -140,7 +133,7 @@ def main ():
          print "sattime: {}".format(sattime)
          print "stime={}  rtime={}  diff={}".format(sattime, refsecs, tdif)
       if sattime > refsecs:
-         dataurl = "{}{}".format(src_url,filename)
+         dataurl = "{}/{}".format(queue_url,filename)
          print "Downloading: %s" %(dataurl)
          fcount += 1
          urllib.urlretrieve(dataurl, filename)

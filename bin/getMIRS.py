@@ -90,7 +90,7 @@ def _process_command_line():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=6,
+        '-bm', '--backmins', type=int, action='store', default=60,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -111,15 +111,13 @@ def main ():
    downloadDir = "/data_store/download"
    queue_url = "http://hippy.gina.alaska.edu/distro/processing/mirs_awips/"
    src_url = "http://hippy.gina.alaska.edu/distro/processing/mirs_awips/"
-   backmins = 120   # minutes back from current time to download
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++##
-
-   reftime = datetime.utcnow() - timedelta(minutes=backmins)
-   refsecs = reftime.strftime("%s")
-
    args = _process_command_line()
    verbose = args.verbose
-   #verbose = True
+
+   reftime = datetime.utcnow() - timedelta(minutes=args.backmins)
+   refsecs = reftime.strftime("%s")
+
    if verbose:
       print "Reference time: ",reftime
    #

@@ -9,6 +9,7 @@ export TZ=/usr/share/zoneinfo/UTC
 readonly PROGNAME=$(basename "$0")
 readonly LOCKFILE_DIR=/tmp
 readonly LOCK_FD=204
+readonly CMDARGS=$@
 
 lock() {
     local prefix=$1
@@ -46,8 +47,8 @@ main() {
    fi
    #
    toolDir='/home/awips/bin'
-   echo "Running: $toolDir/getSST.py"
-   $toolDir/getSST.py 
+   echo "Running: $toolDir/getSST.py $CMDARGS"
+   $toolDir/getSST.py $CMDARGS
    #
    ddtt=`date +%Y%m%d`
    echo "===== End ACSPO SST download - `date` ======"

@@ -117,7 +117,7 @@ def _process_command_line():
         help='satellite sensors to download'
     )
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=6,
+        '-bm', '--backmins', type=int, action='store', default=70,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -132,30 +132,30 @@ def main():
 
    global dataset, verbose
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++## 
-   #backmins = 31   # hours back from current time to download
-   backmins = 61   # hours back from current time to download
-   bgntime = datetime.utcnow() - timedelta(minutes=backmins)
+   ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++## 
+
+   args = _process_command_line()
+   verbose = args.verbose
+   #
+   bgntime = datetime.utcnow() - timedelta(minutes=args.backmins)
    endtime = datetime.utcnow()
    bgnsecs = bgntime.strftime("%s")
    bgnstr = bgntime.strftime("%Y-%m-%d %H%M UTC")
    endstr = endtime.strftime("%Y-%m-%d %H%M UTC")
-
-   ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++## 
+   #
    dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0}
    #
-   args = _process_command_line()
-   verbose = args.verbose
-   verbose = True
-   print "Dates: ",bgnstr," / ",endstr
+   if verbose:
+      print "Dates: ",bgnstr," / ",endstr
    #
    downloads = 0
    for dataset in args.dataset:
       print "Requesting: {}".format(dataset)
       #
       if dataset == 'metop':
-         listurl = "http://nrt-status.gina.alaska.edu/products.txt?satellites[]=metop-b&sensors[]=avhrr&processing_levels[]=awips&start_date={0}&end_date={1}".format(bgnstr, endstr)
+         listurl = "http://nrt-prod.gina.alaska.edu/products.txt?satellites[]=metop-b&sensors[]=avhrr&processing_levels[]=awips&start_date={0}&end_date={1}".format(bgnstr, endstr)
       else:
-         listurl = "http://nrt-status.gina.alaska.edu/products.txt?sensors[]={0}&processing_levels[]=awips&start_date={1}&end_date={2}".format(dataset, bgnstr, endstr)
+         listurl = "http://nrt-prod.gina.alaska.edu/products.txt?sensors[]={0}&processing_levels[]=awips&start_date={1}&end_date={2}".format(dataset, bgnstr, endstr)
       #
       print "URL=",listurl
       sock = urllib.urlopen (listurl)

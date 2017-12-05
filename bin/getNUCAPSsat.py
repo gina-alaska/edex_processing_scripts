@@ -79,7 +79,7 @@ def _process_command_line():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=6,
+        '-bm', '--backmins', type=int, action='store', default=90,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -97,24 +97,21 @@ def main ():
 
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++##
    queue_url = 'http://hippy.gina.alaska.edu/distro/carl/NUCAPS/'
-   backmins = 90   # minutes back from current time to download
-   reftime = datetime.utcnow() - timedelta(minutes=backmins)
-   #doy_now = datetime.utcnow().timetuple().tm_yday
-   #print "DOY=",doy_now
-   refsecs = reftime.strftime("%s")
-
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++##
-   print "Reference time: ",reftime
-   #
+
    args = _process_command_line()
    verbose = args.verbose
-   #verbose = True
- 
+
+   reftime = datetime.utcnow() - timedelta(minutes=args.backmins)
+   refsecs = reftime.strftime("%s")
+   if verbose:
+      print "Reference time: ",reftime
+   #doy_now = datetime.utcnow().timetuple().tm_yday
+   #print "DOY=",doy_now
+   # 
    # instantiate the parser and feed it the HTML page
-   #
    totsize = 0
    totcnt = 0
-
    pathseg = queue_url.split('/')
    #print "pathseg=",pathseg[7],"url=",queue_url
    response = urllib2.urlopen(queue_url)

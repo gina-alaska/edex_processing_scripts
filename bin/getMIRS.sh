@@ -9,6 +9,7 @@ export TZ=/usr/share/zoneinfo/UTC
 readonly PROGNAME=$(basename "$0")
 readonly LOCKFILE_DIR=/tmp
 readonly LOCK_FD=201
+readonly CMDARGS=$@
 
 lock() {
     local prefix=$1
@@ -45,8 +46,8 @@ main() {
    fi
    #
    toolDir='/home/awips/bin'
-   echo "Running: $toolDir/getMIRS.py"
-   $toolDir/getMIRS.py 
+   echo "Running: $toolDir/getMIRS.py $CMDARGS"
+   $toolDir/getMIRS.py $CMDARGS 
    #
    ddtt=`date +%Y%m%d`
    echo "===== End MIRS download - `date` ======"
