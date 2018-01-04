@@ -100,7 +100,7 @@ def main():
     #else:
     #   print "Skip copy. Too many files in queue: {}".format(fnum)
     ##################################
-
+    prodnames = ['dust.nc','ash.nc','ntmicro.nc','color.nc','airmass.nc']
     # look for ".gz" in file path to indicate compression is needed
     if ".gz" in filepath:
        dirnm = os.path.dirname(filepath)
@@ -136,8 +136,16 @@ def main():
        #############################################
        # This section is for future tweaks that may be needed (like netcdf attributes).
        if "sfr.nc" in filepath:
-          print "Changing satelliteName attribute in file: {}".format(filepath)
+          print "Changing satelliteName to NESDIS POES in file: {}".format(filepath)
           chg_attribute(filepath, "satelliteName", "NESDIS POES", args.verbose)
+       elif "viirs_alaska" in filepath:
+          if any([x in filepath for x in prodnames]):
+             print "Changing satelliteName to SPORT VIIRS in file: {}".format(filepath)
+             chg_attribute(filepath, "satelliteName", "SPORT VIIRS", args.verbose)
+       elif "modis_alaska" in filepath:
+          if any([x in filepath for x in prodnames]):
+             print "Changing satelliteName to SPORT MODIS in file: {}".format(filepath)
+             chg_attribute(filepath, "satelliteName", "SPORT MODIS", args.verbose)
        # 
        ##############################################
        #

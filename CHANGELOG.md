@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - rename hetSnowCloudDes.py} (50%)
  - delete get_data_store.sh
 
+## [1.0.2] - 2018-01-04
+- modified the SPoRT LDM processing script to change an attribute on some incoming
+  netcdf files. Needed to prevent conflicts with a few GINA files.
 ## [1.0.1] - 2017-10-19
 ### Added
 - add `bin/getSST.sh` and `bin/getSST.py` - scripts to get SST 
@@ -31,3 +34,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.0.0] - 2017-06-20
 - initial 1.0.0 version to capture what was being done on EDEX
+
