@@ -141,11 +141,11 @@ def main():
        elif "viirs_alaska" in filepath:
           if any([x in filepath for x in prodnames]):
              print "Changing satelliteName to SPORT VIIRS in file: {}".format(filepath)
-             chg_attribute(filepath, "satelliteName", "SPORT VIIRS", args.verbose)
+             chg_attribute(filepath, "satelliteName", "SPoRT VIIRS", args.verbose)
        elif "modis_alaska" in filepath:
           if any([x in filepath for x in prodnames]):
              print "Changing satelliteName to SPORT MODIS in file: {}".format(filepath)
-             chg_attribute(filepath, "satelliteName", "SPORT MODIS", args.verbose)
+             chg_attribute(filepath, "satelliteName", "SPoRT MODIS", args.verbose)
        # 
        ##############################################
        #
