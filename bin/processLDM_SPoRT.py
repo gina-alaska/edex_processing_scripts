@@ -100,7 +100,7 @@ def main():
     #else:
     #   print "Skip copy. Too many files in queue: {}".format(fnum)
     ##################################
-    prodnames = ['dust.nc','ash.nc','ntmicro.nc','color.nc','airmass.nc']
+    prodnames = ['dust.nc','ash.nc','ntmicro.nc','color.nc','airmass.nc','false.nc']
     # look for ".gz" in file path to indicate compression is needed
     if ".gz" in filepath:
        dirnm = os.path.dirname(filepath)

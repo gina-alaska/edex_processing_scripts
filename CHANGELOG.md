@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - rename hetSnowCloudDes.py} (50%)
  - delete get_data_store.sh
 
+## [1.0.4] - 2018-01-07
+- added missing product to SPoRT LDM script 
 ## [1.0.3] - 2018-01-04
 - fixed type with the SPoRT LDM processing script to changes
 ## [1.0.2] - 2018-01-04
