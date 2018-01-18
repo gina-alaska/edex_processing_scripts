@@ -33,6 +33,9 @@ eexit() {
 }
 
 main() {
+   echo "+++++ Starting ACSPO SST download - `date` ++++++"
+   lock $PROGNAME \
+        || eexit "Only one instance of $PROGNAME can run at one time."
    #
    echo "+++++ Starting MIRS download - `date` ++++++"
    # CHECK IF EDEX IS UP

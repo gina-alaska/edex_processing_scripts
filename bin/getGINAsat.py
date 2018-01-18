@@ -1,24 +1,27 @@
 #!/usr/bin/env /awips2/python/bin/python
 
-import urllib, urlparse
+import urllib2, urlparse
+import urllib
 import datetime
-import sys
+import os, sys
+import gzip
+from shutil import copy, move
 import argparse
 from time import strftime
 from HTMLParser import HTMLParser
 from datetime import datetime, timedelta
 from pytz import timezone
+import numpy
+import Scientific.IO.NetCDF
+from Scientific.IO import NetCDF
 
 ##############################################################
 class MyHTMLParser(HTMLParser):
    def __init__(self):
       HTMLParser.__init__(self)
       self.satfile = []
-      self.sattime = []
-      self.satsite = []
       self.record = False
       self.fcnt = 0
-      self.dtype = dataset
    def handle_starttag(self, tag, attrs):
       """ look for start tag and turn on recording """
       if tag == 'a':
@@ -37,72 +40,9 @@ class MyHTMLParser(HTMLParser):
       lines = data.splitlines()
       for dline in lines:
          #print "LINE: ",dline
-         seg=dline.split('_')
-         nsegs = len(seg)
-         if nsegs > 2 and seg[1] == 'AWIPS':
-            # VIIRS
-            if self.dtype == "viirs":
-	       if "crefl" in seg[5]:
-                  #print "++++ VIIRS crefl ++++"
-                  idx = 7
-	       elif "dnb" in seg[5]:
-                  #print "++++ VIIRS DNB ++++"
-                  idx = 7
-               else:
-                  #print "++++ VIIRS ++++"
-                  idx = 6
-
-            # MODIS
-            elif self.dtype == "modis":
-	       if "crefl" in seg[5]:
-                  #print "++++ MODIS crefl ++++"
-                  idx = 8
-               else:
-                  #print "++++ MODIS ++++"
-                  idx = 6
-            # METOP
-            elif self.dtype == "metop":
-               #print "++++ METOP ++++"
-               idx = 7
-            # AVHRR
-            elif self.dtype == "avhrr":
-               #print "++++ AVHRR ++++"
-               idx = 7
-               seg[idx] = "20"+seg[idx]
-            else:
-               print "++++ UNKNOWN ++++"
-               continue
-            #
-            #print "Seg={} Date: {}".format(idx,seg[idx])
-            yr = int(seg[idx][0:4])
-            mo = int(seg[idx][4:6])
-            da = int(seg[idx][6:8])
-            hr = int(seg[idx+1][0:2])
-            mn = int(seg[idx+1][2:4])
-            try:
-               ftime = datetime(yr, mo, da, hr, mn)
-               #datetime.strptime(ddttstr, "%Y%m%d_%H%M")
-            except ValueError:
-               print "Invalid date format: {}".format(self.dtype)
-               print "Date vars: {}/{}/{} {}:{}".format(mo,da,yr,hr,mn)
-               continue
-
+         # make sure line is not blank
+         if len(dline) > 1:
             self.satfile.append(dline)
-            fsecs = ftime.strftime("%s")
-            self.sattime.append(fsecs)
-            # find the source
-            if "gilmore" in dline:
-               self.satsite.append("gilmore")
-            elif "uafgina" in dline:
-               self.satsite.append("uafgina")
-            elif "barrow" in dline:
-               self.satsite.append("barrow")
-            else:
-               self.satsite.append("unknown")
-
-            self.fcnt += 1
-            if verbose:
-               print "stored data URL. ftime: {} secs=()".format(ftime, fsecs)
 
 ##################
 
@@ -113,11 +53,20 @@ def _process_command_line():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'dataset', nargs='+', choices=['viirs','modis','metop','avhrr'],
+        'sensor', nargs='+', choices=['viirs','modis','metop','avhrr','atms'],
         help='satellite sensors to download'
     )
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=70,
+        '-s', '--satellite', action='store', default='all', help='satellite')
+    parser.add_argument(
+        '-l', '--level', action='store', default='awips', choices=['awips',
+        'mirs_awips','scmi','sst_awips'], help='format type')
+    parser.add_argument(
+        '-t', '--test', action='store_true', help='use test NRT data stream')
+    parser.add_argument(
+        '-f', '--qcfilter', action='store_true', help='turn on image qc filter')
+    parser.add_argument(
+        '-bm', '--backmins', type=int, action='store', default=61,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -128,69 +77,179 @@ def _process_command_line():
 
 ######################################################
 
+def ncImageQC(filepath, minpixcnt, minpixrng):
+
+   if not os.path.exists(filepath):
+      print "File not found: ",filepath
+   try:
+      cdf_fh = NetCDF.NetCDFFile(filepath, "r")
+   except IOError:
+       print 'Error opening {}'.format(args.filepath)
+       return 0
+   except OSError:
+       print 'Error accessing {}'.format(args.filepath)
+       return 0
+
+   varid = cdf_fh.variables['image']
+   pixdata = varid.getValue()
+   cdf_fh.close()
+   #
+   pixcnt = numpy.sum(pixdata != 0)
+   #
+   if pixcnt < minpixcnt:
+      return 0
+   #
+   pixmax = numpy.max(pixdata)
+   pixmin = numpy.min(pixdata[numpy.nonzero(pixdata)])
+   pixrng = int(pixmax) - int(pixmin)
+
+   if pixrng < minpixrng:
+      return 0
+
+   return 1
+
+######################################################
+
 def main(): 
 
-   global dataset, verbose
+   global sensor, verbose, testsrc
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++## 
+   ingestDir = "/awips2/edex/data/manual"
+   downloadDir = "/data_store/download"
+   minPixelCount = 60000    # minimum number of pixels for image to be valid
+   minPixelRange = 50       # minimum range of pixel values for valid image
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++## 
-
+   #
+   ###### definitions base on command line input
    args = _process_command_line()
-   verbose = args.verbose
+   verbose = args.verbose      # turns on verbose output
+   satellite = args.satellite  # specifies single satellite platform
+   testsrc = args.test         # directs data requests to test NRT stream
+   if testsrc:
+       datasrc = "nrt-test"
+   else:
+       datasrc = "nrt-prod"
+   level = args.level
    #
    bgntime = datetime.utcnow() - timedelta(minutes=args.backmins)
    endtime = datetime.utcnow()
    bgnsecs = bgntime.strftime("%s")
-   bgnstr = bgntime.strftime("%Y-%m-%d %H%M UTC")
-   endstr = endtime.strftime("%Y-%m-%d %H%M UTC")
-   #
-   dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0}
+   bgnstr = bgntime.strftime("%Y-%m-%d+%H%M")
+   endstr = endtime.strftime("%Y-%m-%d+%H%M")
+   #print "format={}  satellite={}".format(level, satellite) 
+   ######
+   dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0,"atms":0}
    #
    if verbose:
       print "Dates: ",bgnstr," / ",endstr
    #
    downloads = 0
-   for dataset in args.dataset:
-      print "Requesting: {}".format(dataset)
+   for sensor in args.sensor:
+      print "Requesting: {}".format(sensor)
       #
-      if dataset == 'metop':
-         listurl = "http://nrt-prod.gina.alaska.edu/products.txt?satellites[]=metop-b&sensors[]=avhrr&processing_levels[]=awips&start_date={0}&end_date={1}".format(bgnstr, endstr)
+      if satellite == 'all':
+         listurl = "http://{0}.gina.alaska.edu/products.txt?sensors[]={1}&processing_levels[]={2}&start_date={3}&end_date={4}".format(datasrc, sensor, level, bgnstr, endstr)
       else:
-         listurl = "http://nrt-prod.gina.alaska.edu/products.txt?sensors[]={0}&processing_levels[]=awips&start_date={1}&end_date={2}".format(dataset, bgnstr, endstr)
+         listurl = "http://{0}.gina.alaska.edu/products.txt?satellites[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, satellite, sensor, level, bgnstr, endstr)
       #
       print "URL=",listurl
       sock = urllib.urlopen (listurl)
 
       htmlSource = sock.read()
       sock.close()
-      print "BEGIN HTML ======================================================="
-      print htmlSource
-      print "END HTML ========================================================="
+      if verbose:
+         print "BEGIN HTML ======================================================="
+         print htmlSource
+         print "END HTML ========================================================="
       rtnval = len(htmlSource)
       print "HTML String length = {}".format(rtnval)
       # instantiate the parser and feed it the HTML page
       parser = MyHTMLParser()
       parser.feed(htmlSource)
 
+      # change working location to the download scratch directory
+      os.chdir(downloadDir)
       # now parse the file name and retrieve the recent files 
       cnt = 0
+      dcount = 0
+      ingcount = 0
+      totsize = 0
       for fileurl in parser.satfile:
-         filesecs = parser.sattime[cnt]
-         print "filesecs=%s  bgnsecs=%s" %(filesecs, bgnsecs)
-         print "Downlink: {}".format(parser.satsite[cnt]) 
-         print "Downloading: {}".format(fileurl)
-         split = urlparse.urlsplit(fileurl)
-         filename = "./{}".format(split.path.split("/")[-1])
-         #print "FILENAME=",filename
-         #filename = "./" + split.path.split("/")[-1]
-         #print "ORIG FILENAME=",filename
+         # the test location for files is different than the operational location
+         if testsrc:
+            fileurl = fileurl.replace("dds.gina.alaska.edu/nrt","nrt-dds-test.gina.alaska.edu")
+         if verbose:
+            print "Downloading: {}".format(fileurl)
+         filename = "{}".format(fileurl.split("/")[-1])
+         print "FILENAME={}".format(filename)
          urllib.urlretrieve(fileurl, filename)
+         if os.path.isfile(filename):
+            fsize = os.path.getsize(filename)
+            dcount += 1                      
+            nameseg = filename.split('.')
+            basenm = nameseg[0]              
+            if verbose: 
+               print "Basename = {}".format(basenm)
+            # use base name to create a new name with "Alaska" prefix and ".nc" extension
+            if level == 'scmi':
+               newfilename="AKPOLAR_{}.nc".format(basenm)
+            else:
+               newfilename="Alaska_{}.nc".format(basenm)
+
+            # now look for ".gz" in file name to determine if compression is needed
+            if ".gz" in filename:
+               # open compressed file and read out all the contents
+               inF = gzip.GzipFile(filename, 'rb')
+               s = inF.read()
+               inF.close()
+               # now write uncompressed result to the new filename
+               outF = file(newfilename, 'wb')
+               outF.write(s)
+               outF.close()
+               # make sure the decompression was successful
+               if not os.path.exists(newfilename):
+                   print "Decompression failed: {}".format(filename)
+                   raise SystemExit
+               # redirected compression copies to a new file so old compressed file needs to be removed
+               os.remove(filename)
+               #
+               if verbose:
+                  print "File decompressed: {}".format(newfilename)
+
+            elif ".nc" in filename:
+               move(filename, newfilename)
+            #
+            # set the filename variable to the new uncompressed name
+            filename = newfilename
+            ###############################################
+            # last step is to do QC checks on the data
+            if args.qcfilter:
+               if ncImageQC(filename, minPixelCount, minPixelRange):
+                  print "Moving {} to {}".format(filename, ingestDir)
+                  move(filename,ingestDir)
+                  ingcount += 1
+               else:
+                  print "QC failed. Removing: {}".format(filename)
+                  os.remove(filename)
+            ###############################################
+            else:
+               # OK, ready to move the file to the ingest directory
+               print "Moving {} to {}".format(filename, ingestDir)
+               move(filename,ingestDir)
+               ingcount += 1
+               print "INGEST CNT = {}".format(ingcount) 
+            #
+         else:
+            fsize = 0
+
+         totsize += fsize
          downloads += 1
-         dset_count[dataset] += 1
+         dset_count[sensor] += 1
          cnt += 1
 
-   for dataset in args.dataset:
-      print "{} files downloaded={}".format(dataset,dset_count[dataset])
-   print "Total files downloaded={}".format(downloads)
+   for sensor in args.sensor:
+      print "{} files downloaded={}".format(sensor,dset_count[sensor])
+   print "Total files downloaded={} ingested={}  total size={}".format(downloads, ingcount, totsize)
 
 if __name__ == '__main__':
     main()

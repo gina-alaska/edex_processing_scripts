@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.5] - 2018-01-18
+- updated AWIPS fetching/ingest script
 ## [1.0.4] - 2018-01-07
 - added missing product to SPoRT LDM script 
 ## [1.0.3] - 2018-01-04
