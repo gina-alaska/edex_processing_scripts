@@ -7,7 +7,7 @@ export PYTHONPATH=/awips2/fxa/bin/src:/awips2/python/lib
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/awips2/python/lib
 readonly PROGNAME=$(basename "$0")
 readonly LOCKFILE_DIR=/tmp
-readonly LOCK_FD=200
+readonly LOCK_FD=208
 readonly CMDARGS=$@
 
 lock() {
@@ -33,7 +33,7 @@ eexit() {
 
 main() {
    #
-   echo "+++++ Starting GINA product download - `date` ++++++"
+   echo "+++++ Starting GINA TEST product download - `date` ++++++"
    lock $PROGNAME \
         || eexit "Only one instance of $PROGNAME can run at one time."
 
@@ -54,63 +54,16 @@ main() {
       echo ""
       CMDARGS="viirs modis avhrr metop"
    fi
-
-   baseDir="/awips2/data_store/download"
-   ingestDir="/awips2/edex/data/manual"
-   satlist=""
    #
-   # check download directory for old files to clean up
-   #/home/awips/bin/myCleanup.py $baseDir -v
+   #toolDir='/home/awips/bin'
+   toolDir='/home/awips/testscripts'
+   echo "Running: $toolDir/getGINAsat.py $CMDARGS"
+   $toolDir/getGINAsat.py $CMDARGS
    #
-   cd $baseDir
-   echo "/home/awips/bin/getGINAsat.py $CMDARGS"
-   /home/awips/bin/getGINAsat.py $CMDARGS
-   #
-   touch UAF_marker
-   # next unzip and rename the files
-   for srcname in `ls UAF*`
-   do
-      echo "File: $srcname"
-      if [ "$srcname" = "UAF_marker" ]
-      then
-         rm $srcname
-      else
-         gunzip $srcname 
-         srcname=`echo $srcname | sed 's/.gz//'`
-         #
-	 ##################################################
-         #srcname="${srcname%.*}"
-         ##################################################
-         # This section is for image quality check to be implemented later
-         #qc_test=`/home/awips/bin/ncImageQC.py -c 60000 -r 50 $srcname`
-         #tresult=`echo $qc_test | cut -c -4`
-         #pixelcnt=`/home/awips/bin/ncpixelcnt.py $srcname | cut -f1 -d' '`
-         tresult="PASS"
-         #if [ $pixelcnt -lt 60000 ]
-         #then
-         #   tresult="FAIL"
-         #fi
-         ##################################################
-         if [ $tresult = "FAIL" ]
-         then
-            echo "Image QC: $qc_test -  Removing $srcname"
-            #mv $srcname /home/awips/tmp
-            rm $srcname
-         else
-            destname="Alaska_$srcname"
-            #mv $srcname $destname
-            echo "mv $srcname $ingestDir/$destname"
-            mv $srcname $ingestDir/$destname
-         fi
-      fi
-   done
-   #
-   echo "Ingest directory:"
-   ls $ingestDir
    ddtt=`date +%Y%m%d`
-   echo "===== End GINA product download - `date` ======"
+   echo "===== End GINA TEST product download - `date` ======"
    #
 }
 main
-) >> /awips2/edex/logs/edex-ingest-lclregsat-$yyyymmdd".log" 2>&1
+) >> /awips2/edex/logs/edex-ingest-lcltestsat-$yyyymmdd".log" 2>&1
 #

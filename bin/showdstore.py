@@ -46,7 +46,7 @@ def main():
 
     curtime  = datetime.utcnow()
     if args.day is not None:
-        subDir = '{}{}'.format(curtime.strftime("%Y%m"),args.day)
+        subDir = '{}{:02}'.format(curtime.strftime("%Y%m"),int(args.day))
         print subDir
         paths = get_filepaths('{}/{}'.format(basedirectory,subDir))
     else:

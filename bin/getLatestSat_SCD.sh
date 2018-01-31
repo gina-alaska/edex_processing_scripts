@@ -8,7 +8,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/awips2/python/lib
 export TZ=/usr/share/zoneinfo/UTC
 readonly PROGNAME=$(basename "$0")
 readonly LOCKFILE_DIR=/tmp
-readonly LOCK_FD=201
+readonly LOCK_FD=207
 readonly CMDARGS=$@
 
 lock() {

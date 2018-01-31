@@ -7,7 +7,7 @@ export PYTHONPATH=/awips2/fxa/bin/src
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/awips2/python/lib
 readonly PROGNAME=$(basename "$0")
 readonly LOCKFILE_DIR=/tmp
-readonly LOCK_FD=200
+readonly LOCK_FD=205
 readonly CMDARGS=$@
 
 lock() {

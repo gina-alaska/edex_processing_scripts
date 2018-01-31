@@ -39,31 +39,22 @@ def _process_command_line():
     args = parser.parse_args()
     return args
 
+#####################################################################
 
-def main():
-   """ counts valid pixels in satellite netcdf file."""
-   #
-   pixmax = 0
-   pixmin = 0
-   pixrng = 0
+def qc_image_file(filepath, mincnt, minrng):
+   """Process the command line arguments."""
 
-   args = _process_command_line()
-   if args.mincnt == 0 and args.minrng == 0:
-      if args.verbose == False:
-         print "No thresholds specified...reporting results only"
-         args.verbose = True
-   #
-   if not os.path.exists(args.filepath):
-      print "File not found: ",args.filepath 
+   if not os.path.exists(filepath):
+      print "File not found: ", filepath 
       raise SystemExit
    try:
-      cdf_fh = NetCDF.NetCDFFile(args.filepath, "r")
+      cdf_fh = NetCDF.NetCDFFile(filepath, "r")
    except IOError:
-       print 'Error opening {}'.format(args.filepath)
-       raise SystemExit
+      print 'Error opening {}'.format(filepath)
+      raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(args.filepath)
-       raise SystemExit
+      print 'Error accessing {}'.format(filepath)
+      raise SystemExit
 
    varid = cdf_fh.variables['image']
    pixdata = varid.getValue()
@@ -76,18 +67,49 @@ def main():
       pixrng = int(pixmax) - int(pixmin)
       
    #
-   if args.verbose:
+   if verbose:
       print "pixmax = {} pixmin = {}".format(pixmax, pixmin)
       print "{} pixels with range: {}".format(pixcnt, pixrng)
+
+   if mincnt == 0 and minrng == 0:
+      return True
    #
-   if args.mincnt > 0 and pixcnt < args.mincnt:
-      print "FAIL - too few valid pixels"
-   elif args.minrng > 0 and pixrng < args.minrng:
-      print "FAIL - range too narrow"
+   if mincnt > 0 and pixcnt < mincnt:
+      if verbose:
+         print "Too few valid pixels"
+      return False
+   elif minrng > 0 and pixrng < minrng:
+      if verbose:
+         print "Range too narrow"
+      return False
    else:
-      if args.mincnt == 0 and args.minrng == 0:
-         raise SystemExit
-      print "PASS"
+      return True
+
+   return
+
+#####################################################################
+
+def main():
+   """ counts valid pixels in satellite netcdf file."""
+   global verbose
+   #
+   pixmax = 0
+   pixmin = 0
+   pixrng = 0
+   # process command line arguements
+   args = _process_command_line()
+
+   verbose = args.verbose
+   if args.mincnt == 0 and args.minrng == 0:
+      if verbose == False:
+         print "No thresholds specified...reporting results only:"
+         verbose = True
+   #
+   if qc_image_file(args.filepath, args.mincnt, args.minrng) == False:
+      print "QC FAIL"
+   else:
+      if args.mincnt > 0 and args.minrng > 0:
+         print "QC PASS"
 
    return
 
