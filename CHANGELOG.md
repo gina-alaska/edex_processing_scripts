@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.6] - 2018-01-31
+- updated getGINAsat.py AWIPS retrieval/ingest script to include NUCAPS
+- added nucaps4awips.py and ncImage.py scripts which are called as modules
+  to the retrieval script.
+- added chgvtime.py script for changing the valid time of a satellite image. This
+  is used to compare different versions of the same image for debugging.
 ## [1.0.5] - 2018-01-18
 - updated AWIPS fetching/ingest script
 ## [1.0.4] - 2018-01-07
