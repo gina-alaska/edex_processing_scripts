@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.7] - 2018-02-15
+- changed makeMosaic.py compositing time length
+- remove obsolete scripts still looking for data on hippy
+- added pixel count utility for SCMI tiles
 ## [1.0.6] - 2018-01-31
 - updated getGINAsat.py AWIPS retrieval/ingest script to include NUCAPS
 - added nucaps4awips.py and ncImage.py scripts which are called as modules
