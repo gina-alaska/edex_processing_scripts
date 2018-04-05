@@ -573,7 +573,7 @@ def main():
       "3.7": 24,
       "11": 24,
       "12": 24,
-      "rainrate":6,
+      "rainrate":12,
       "seaice":24,
       "snowcover":24,
       "tpw":24,
