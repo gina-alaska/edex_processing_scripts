@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.8] - 2018-04-05
+- updated getGINAsat.py so that it does not stop for download failure
 ## [1.0.7] - 2018-02-15
 - changed makeMosaic.py compositing time length
 - remove obsolete scripts still looking for data on hippy
