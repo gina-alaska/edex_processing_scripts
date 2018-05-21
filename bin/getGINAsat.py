@@ -222,9 +222,20 @@ def main():
                       print "Removing: {}".format(filename)
                       os.remove(filename)
                       continue 
-               # OK, ready to move the file to the ingest directory
-               print "Moving {} to {}".format(filename, ingestDir)
-               move(filename,ingestDir)
+               # Now check if the file already exists ingest directory
+               ingestfilepath = "{}/{}".format(ingestDir,filename)
+               if os.path.exists(ingestfilepath):
+                  print "File already exists in Ingest Dir...removing: {}".format(filename)
+                  os.remove(filename)
+                  continue
+               else:
+                  # OK, ready to move the file to the ingest directory
+                  print "Moving {} to {}".format(filename, ingestDir)
+	          try:
+                     move(filename,ingestDir)
+	          except:
+                     print "************  Unable to  move file to ingest: {}".format(filename)
+                     continue
                ingcount += 1
                print "INGEST CNT = {}".format(ingcount) 
             #

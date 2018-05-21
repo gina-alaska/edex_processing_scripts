@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.0.9] - 2018-05-18
+- added a new LDM processing script for NUCAPS soundings
+- added nucaps4awips.py script to modify NUCAPS files for AWIPS 
+- modified existing LDM processing scripts for catching file move failures
 
 ## [1.0.8] - 2018-04-05
 - updated getGINAsat.py so that it does not stop for download failure

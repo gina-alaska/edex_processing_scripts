@@ -95,7 +95,11 @@ def main():
        # OK, ready to move the file to the ingest directory
        #
        print "Moving {} to {}".format(filepath, ingestDir)
-       move(filepath,ingestDir)
+       try:
+          move(filepath,ingestDir)
+       except:
+          print "Move to ingest failed. Removing: {}".format(filepath)
+          os.remove(filepath)
        #
     # a file with a UAF prefix and no ".gz" extension is unknown
     else:

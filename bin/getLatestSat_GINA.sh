@@ -33,7 +33,7 @@ eexit() {
 
 main() {
    #
-   echo "+++++ Starting GINA TEST product download - `date` ++++++"
+   echo "+++++ Starting GINA product fetch & download - `date` ++++++"
    lock $PROGNAME \
         || eexit "Only one instance of $PROGNAME can run at one time."
 
@@ -55,15 +55,15 @@ main() {
       CMDARGS="viirs modis avhrr metop"
    fi
    #
-   #toolDir='/home/awips/bin'
-   toolDir='/home/awips/testscripts'
+   #toolDir='/home/awips/testscripts'
+   toolDir='/home/awips/bin'
    echo "Running: $toolDir/getGINAsat.py $CMDARGS"
    $toolDir/getGINAsat.py $CMDARGS
    #
    ddtt=`date +%Y%m%d`
-   echo "===== End GINA TEST product download - `date` ======"
+   echo "===== End GINA product fetch & download - `date` ======"
    #
 }
 main
-) >> /awips2/edex/logs/edex-ingest-lcltestsat-$yyyymmdd".log" 2>&1
+) >> /awips2/edex/logs/edex-ingest-lclsat-$yyyymmdd".log" 2>&1
 #
