@@ -5,19 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
- - delete getGINAsat.py.nodups
- - delete getGINAsatProd.py
- - delete getLatestASCAT_SBN.sh
- - delete getLatestMetar_SBN.sh
- - rewrite getLatestSat_GINA.sh (77%)
- - rewrite getLatestSat_GINA_nolog.sh (80%)
- - delete getLatestSat_SBN.sh
- - create getLatestSat_SCD.sh
- - delete getLatestSndg_SBN.sh
- - delete getLatest_SBN.sh
- - delete getMetarSBN_auto.sh
- - rename hetSnowCloudDes.py} (50%)
- - delete get_data_store.sh
+## [1.0.9] - 2018-05-18
+- added a new LDM processing script for NUCAPS soundings
+- added nucaps4awips.py script to modify NUCAPS files for AWIPS 
+- modified existing LDM processing scripts for catching file move failures
 
 ## [1.0.8] - 2018-04-05
 - updated getGINAsat.py so that it does not stop for download failure

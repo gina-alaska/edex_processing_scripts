@@ -8,6 +8,7 @@ from shutil import copy, move
 import datetime
 from datetime import datetime, timedelta
 import time
+from nucaps4awips import fix_nucaps_file
 
 def _process_command_line():
     """Process the command line arguments.
@@ -31,7 +32,7 @@ def main():
     curtime  = datetime.utcnow()
     logpath="/opt/ldm/var/logs/edex-ingest-LDMsat-{}.log".format(curtime.strftime("%Y%m%d"))
     sys.stdout = sys.stderr = open(logpath, 'a+')
-
+    tmpDir = "/data_store/download"
     ingestDir = "/awips2/edex/data/manual"
 
     args = _process_command_line()
@@ -52,19 +53,7 @@ def main():
         raise SystemExit
 
     filepath = args.filepath
-    #print "Valid filepath: {}".format(filepath)
-
-    ################################################3
-    # To stop data flow to AWIPS, uncomment these lines 
-    #os.remove(filepath)
-    #raise SystemExit
-    ################################################3
-    #
-    # this section is only for support of remote file downloads (i.e. carl)
-    #if not os.path.exists(queueDir):
-    #   os.makedirs(queueDir)
-    #print "copying {} to {}".format(filepath, queueDir)
-    #copy(filepath,queueDir)
+    os.chdir(tmpDir)
 
     # look for ".gz" in file path to indicate compression is needed
     if ".gz" in filepath:
@@ -74,9 +63,9 @@ def main():
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
        if ".nc" in basenm:
-          newfilepath="{}/Alaska_{}".format(dirnm, basenm)
+          newfilepath="{}/{}".format(dirnm, basenm)
        else:
-          newfilepath="{}/Alaska_{}.nc".format(dirnm, basenm)
+          newfilepath="{}/{}.nc".format(dirnm, basenm)
        #
        # open the compressed file and read out all the contents
        inF = gzip.GzipFile(filepath, 'rb')
@@ -98,7 +87,21 @@ def main():
        # set the filepath to point to the uncompresses name
        filepath = newfilepath
        #
-       # Now the file is uncompressed and renamed with the "Alaska_" prefix. 
+    if ".nc" in filepath:
+       print "fix nucaps file"
+       newfilename = fix_nucaps_file(filepath)
+       print "new filename = {}".format(newfilename)
+       newfilepath = "{}/{}".format(tmpDir,newfilename)
+       if os.path.exists(newfilepath):
+          # a new converted file has been made so remove the original file
+          print "Removing: {}".format(filepath)
+          os.remove(filepath)
+       else:
+          print "Conversion failed: {}".format(filepath)
+          raise SystemExit
+          
+       # assign filepath to the new converted file
+       filepath = newfilepath
        #############################################
        # This section is for future tweaks that may be needed (like netcdf attributes).
        # 
