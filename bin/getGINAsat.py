@@ -223,8 +223,8 @@ def main():
                       os.remove(filename)
                       continue 
                # Now check if the file already exists ingest directory
-               ingestfilepath = "{}/{}".format(ingestDir,filename)
-               if os.path.exists(ingestfilepath):
+               ingestfilename = "{}/{}".format(ingestDir,filename)
+               if os.path.exists(ingestfilename):
                   print "File already exists in Ingest Dir...removing: {}".format(filename)
                   os.remove(filename)
                   continue

@@ -36,7 +36,7 @@ def main():
     queueLimit = 60 
     args = _process_command_line()
 
-    print "------\n{}Z Received: {}".format(curtime.strftime("%Y%m%d %H%M"), args.filepath)
+    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
     #
     if not os.path.exists(args.filepath):
         print "File not found: {}".format(args.filepath)
@@ -77,6 +77,9 @@ def main():
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
        if ".nc" in basenm:
           newfilepath="{}/Alaska_{}".format(dirnm, basenm)
+       elif "MIMIC" in basenm:
+          print "File MIMIC file: {}/{}".format(dirnm, basenm)
+          newfilepath="{}/LDADGRIB_{}".format(dirnm, basenm)
        else:
           newfilepath="{}/Alaska_{}.nc".format(dirnm, basenm)
        #

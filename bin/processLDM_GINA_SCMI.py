@@ -67,36 +67,13 @@ def main():
     #copy(filepath,queueDir)
 
     # look for ".gz" in file path to indicate compression is needed
-    if ".gz" in filepath:
+    if "UAF_AII" in filepath:
        # determine the filepath directory and base names
        dirnm = os.path.dirname(filepath)
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if ".nc" in basenm:
-          newfilepath="{}/Alaska_{}".format(dirnm, basenm)
-       else:
-          newfilepath="{}/Alaska_{}.nc".format(dirnm, basenm)
-       #
-       # open the compressed file and read out all the contents
-       inF = gzip.GzipFile(filepath, 'rb')
-       s = inF.read()
-       inF.close()
-       # now write uncompressed result to the new filename 
-       outF = file(newfilepath, 'wb')
-       outF.write(s)
-       outF.close()
-       #
-       # make sure the decompression was successful
-       if not os.path.exists(newfilepath):
-          print "Decompression failed: {}".format(filepath)
-          raise SystemExit
-       #
-       print "File decompressed: {}".format(newfilepath)
-       # redirected compression copies to a new file so old compressed file needs to be removed
-       os.remove(filepath)
-       # set the filepath to point to the uncompresses name
-       filepath = newfilepath
+       #ingestPath="{}/{}".format(ingestDir, filenm)
        #
        # Now the file is uncompressed and renamed with the "Alaska_" prefix. 
        #############################################
@@ -107,6 +84,7 @@ def main():
        # OK, ready to move the file to the ingest directory
        print "Moving {} to {}".format(filepath, ingestDir)
        try:
+          #move(filepath,ingestPath)
           move(filepath,ingestDir)
        except:
           print "Move to ingest failed. Removing: {}".format(filepath)
