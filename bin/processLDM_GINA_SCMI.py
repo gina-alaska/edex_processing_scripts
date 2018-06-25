@@ -1,5 +1,5 @@
 #!/usr/bin/env /awips2/python/bin/python
-"""LDM processing script for SCMI satellite data. Moves saved files to AWIPS ingest."""
+"""Get all the files in datastore netcdf file."""
 
 import argparse
 import os, sys
@@ -60,14 +60,20 @@ def main():
     #raise SystemExit
     ################################################3
     #
-    # SCMI files start with UAF_AII. Compression is internal
+    # this section is only for support of remote file downloads (i.e. carl)
+    #if not os.path.exists(queueDir):
+    #   os.makedirs(queueDir)
+    #print "copying {} to {}".format(filepath, queueDir)
+    #copy(filepath,queueDir)
+
+    # look for ".gz" in file path to indicate compression is needed
     if "UAF_AII" in filepath:
        # determine the filepath directory and base names
        dirnm = os.path.dirname(filepath)
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       ingestPath="{}/AKPOLAR_{}".format(ingestDir, filenm)
+       #ingestPath="{}/{}".format(ingestDir, filenm)
        #
        # Now the file is uncompressed and renamed with the "Alaska_" prefix. 
        #############################################
@@ -76,9 +82,10 @@ def main():
        ##############################################
        #
        # OK, ready to move the file to the ingest directory
-       print "Moving {} to {}".format(filepath, ingestPath)
+       print "Moving {} to {}".format(filepath, ingestDir)
        try:
-          move(filepath,ingestPath)
+          #move(filepath,ingestPath)
+          move(filepath,ingestDir)
        except:
           print "Move to ingest failed. Removing: {}".format(filepath)
           os.remove(filepath)

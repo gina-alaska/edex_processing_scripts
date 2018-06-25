@@ -31,10 +31,10 @@ class MyHTMLParser(HTMLParser):
 
       polar_list = ['TER','AQU']
       goes_list = ['G-15','G-16']
-      if verbose:
-         chartext=data.strip()
-         if len(chartext) > 1:
-            print "Found data line: {}".format(chartext)
+      #if verbose:
+      #   chartext=data.strip()
+      #   if len(chartext) > 1:
+      #      print "Found data line: {}".format(chartext)
       lines = data.splitlines()
       for dline in lines:
          seg = dline.split('.')
@@ -42,17 +42,18 @@ class MyHTMLParser(HTMLParser):
          if len(seg) > 2:
             #
             # test for only requested product group
+            #print "FILE: {}/ datatype: {}/ product: {}".format(dline, self.dtype, product)
             savepath = 0
-            for dset in dataset:
-               if dset == 'polar':
-                  if product in polar_list:
-                     savepath = 1
-               elif dset == 'goes':
-                  if product in goes_list:
-                     savepath = 1
-               elif dset == 'all':
-                     savepath = 1
-            #print "FILE: {} / {}  product: {}/{}".format(dline, dataset, product, savepath)
+            if self.dtype == 'polar':
+               if product in polar_list:
+                  savepath = 1
+            elif self.dtype == 'goes':
+               if product in goes_list:
+                  savepath = 1
+            elif self.dtype == 'all':
+               if product in goes_list or product in polar_list:
+                  savepath = 1
+            #print "SAVEPATH={}".format(savepath)
             # if requested set is not found, skip...
             if not savepath:
                continue 
@@ -101,7 +102,7 @@ def _process_command_line():
         help='satellite Icing products to download'
     )
     parser.add_argument(
-        '-bm', '--backmins', type=int, action='store', default=90,
+        '-bm', '--backmins', type=int, action='store', default=60,
         help='num mins back to consider')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
@@ -118,18 +119,21 @@ def main ():
    global dataset, verbose
 
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++##
-   queue_paths = ['http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/modis/awips2-nc',
-                'http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/goesw/awips2-nc']
+   #queue_paths = ['http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/modis/awips2-nc/',
+   #             'http://cloudsgate2.larc.nasa.gov/prod/website/icing/alaska/goesw/awips2-nc/']
+   queue_paths = ['http://satcorps.larc.nasa.gov/prod/website/icing/alaska/modis/awips2-nc/',
+                'http://satcorps.larc.nasa.gov/prod/website/icing/alaska/goesw/awips2-nc/']
    ##++++++++++++++++++  end configuration  ++++++++++++++++++++++++##
-
    args = _process_command_line()
    verbose = args.verbose
 
    reftime = datetime.utcnow() - timedelta(minutes=args.backmins)
    refsecs = reftime.strftime("%s")
-   print "Reference time: ",reftime
-   #
+
    dataset = args.dataset
+   if verbose:
+      print "Reference time: {} dataset: {}".format(reftime,dataset)
+   #
  
    # instantiate the parser and feed it the HTML page
    #
@@ -137,7 +141,7 @@ def main ():
    totcnt = 0
    for queue_url in queue_paths:
       pathseg = queue_url.split('/')
-      print "pathseg=",pathseg[7],"url=",queue_url
+      print "pathseg=",pathseg[7],"  url=",queue_url
       if pathseg[7] in queue_url:
          response = urllib2.urlopen(queue_url)
          htmlSource = response.read()

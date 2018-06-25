@@ -8,6 +8,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/awips2/python/lib
 readonly PROGNAME=$(basename "$0")
 readonly LOCKFILE_DIR=/tmp
 readonly LOCK_FD=202
+readonly CMDARGS=$@
 
 lock() {
     local prefix=$1
@@ -48,9 +49,18 @@ main() {
    ingestDir="/awips2/edex/data/manual"
    toolDir="/home/awips/bin"
    #
+   # CHECK IF THIS IS A TEST SCRIPT
+   SPATH="$0"
+   echo "script path: $0"
+   if [[ $SPATH =~ testscripts ]]
+   then
+      toolDir='/home/awips/testscripts'
+      echo "Test script. Tool path set to: $toolDir"
+   fi
+   #
    cd $ingestDir
-   echo "Running: $toolDir/getIcingSat.py $@"
-   $toolDir/getIcingSat.py $@
+   echo "Running: $toolDir/getIcingSat.py $CMDARGS"
+   $toolDir/getIcingSat.py $CMDARGS
    #
    echo "Ingest directory:"
    ls $ingestDir
@@ -59,5 +69,5 @@ main() {
    echo "===== End GINA product download: `date` ======"
 }
 main
-) >> /awips2/edex/logs/edex-ingest-lclregsat-$ddtt".log" 2>&1
+) >> /awips2/edex/logs/edex-ingest-lcltestsat-$ddtt".log" 2>&1
 #

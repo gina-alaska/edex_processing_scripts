@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.0.10] - 2018-06-14
+- updated LDM processing script processLDM_SSEC.py to handle MIMIC data
+- added LDM processing script for SCMI (Not usually needed)
+- added script for viewing LDM queue
+- minor additional script updates
+
 ## [1.0.9] - 2018-05-18
 - added a new LDM processing script for NUCAPS soundings
 - added nucaps4awips.py script to modify NUCAPS files for AWIPS 

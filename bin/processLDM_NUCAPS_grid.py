@@ -36,7 +36,7 @@ def main():
 
     args = _process_command_line()
 
-    print "------\n{}Z Received: {}".format(curtime.strftime("%Y%m%d %H%M"), args.filepath)
+    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
 
     if not os.path.exists(args.filepath):
         print "File not found: {}".format(args.filepath)
