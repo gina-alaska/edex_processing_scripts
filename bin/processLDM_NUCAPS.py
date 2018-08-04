@@ -53,6 +53,19 @@ def main():
         raise SystemExit
 
     filepath = args.filepath
+    if "NUCAPS-ALL" in filepath:
+       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       os.remove(filepath)
+       raise SystemExit
+    if "NUCAPS-OLR" in filepath:
+       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       os.remove(filepath)
+       raise SystemExit
+    if "NUCAPS-CCR" in filepath:
+       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       os.remove(filepath)
+       raise SystemExit
+
     os.chdir(tmpDir)
 
     # look for ".gz" in file path to indicate compression is needed

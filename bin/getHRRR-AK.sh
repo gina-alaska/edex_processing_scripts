@@ -26,6 +26,11 @@ chr=`printf '%02d' $ihr`
 REGEX="`date +%y%j`"$chr"*"
 echo "Downloading Hour: $REGEX"
 #
+# make sure there is a download subdirectory for model output files in /data_store
+if [ ! -d $LOCALDIR ]
+then
+   mkdir $LOCALDIR
+fi
 # Now download the HRRR-AK model from the three subdirectories in the ESRL server
 for subdir in $SUBDIRS
 do
