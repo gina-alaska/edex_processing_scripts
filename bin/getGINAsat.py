@@ -61,8 +61,10 @@ def _process_command_line():
     parser.add_argument(
         '-s', '--satellite', action='store', default='all', help='satellite')
     parser.add_argument(
+        '-m', '--match', action='store', default='', help='match substring in filename')
+    parser.add_argument(
         '-l', '--level', action='store', default='awips', choices=['awips',
-        'mirs_awips','scmi','sst_awips','nucaps_level2'], help='format type')
+        'mirs_awips','scmi','sst_awips','nucaps_level2','clavrx_scmi'], help='format type')
     parser.add_argument(
         '-t', '--test', action='store_true', help='use test NRT data stream')
     parser.add_argument(
@@ -94,12 +96,14 @@ def main():
    verbose = args.verbose      # turns on verbose output
    satellite = args.satellite  # specifies single satellite platform
    testsrc = args.test         # directs data requests to test NRT stream
+   matchstr = args.match        # directs data requests to test NRT stream
    if testsrc:
        datasrc = "nrt-test"
    else:
        datasrc = "nrt-prod"
    level = args.level
    #
+        
    bgntime = datetime.utcnow() - timedelta(minutes=args.backmins)
    endtime = datetime.utcnow()
    bgnsecs = bgntime.strftime("%s")
@@ -150,6 +154,13 @@ def main():
          if verbose:
             print "Downloading: {}".format(fileurl)
          filename = "{}".format(fileurl.split("/")[-1])
+         if matchstr:
+            #print "looking for matchstr=[{}]".format(matchstr)
+            if matchstr in filename:
+               print "Found: {}".format(filename)
+            else:
+               continue
+
          print "FILENAME={}".format(filename)
          urllib.urlretrieve(fileurl, filename)
          if os.path.isfile(filename):
@@ -160,7 +171,7 @@ def main():
             if verbose: 
                print "Basename = {}".format(basenm)
             # use base name to create a new name with "Alaska" prefix and ".nc" extension
-            if level == 'scmi':
+            if level == 'scmi' or level == 'clavrx_scmi':
                newfilename="AKPOLAR_{}.nc".format(basenm)
             elif level == 'nucaps_level2':
                newfilename=basenm

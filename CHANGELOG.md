@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.0.12] - 2018-10-04
+- update to NRT retreval script (getGINAsat.py) for CLAVR-X and to add file string matching
+
+## [1.0.11] - 2018-08-03
+- minor error checking for LDM processing scripts..particularly for NUCAPS
+
 ## [1.0.10] - 2018-06-14
 - updated LDM processing script processLDM_SSEC.py to handle MIMIC data
 - added LDM processing script for SCMI (Not usually needed)

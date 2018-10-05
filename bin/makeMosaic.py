@@ -16,7 +16,7 @@ from Scientific.IO import NetCDF
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.96-C
+##  beta version: 0.99
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -64,8 +64,11 @@ class filePart(object):
       elif fparts[idx+3] == "atms":
          self.parse_mirs(fparts, fplen, idx)
       # This is for SNPP VIIRS 
-      elif fparts[idx+2] == "npp":
+      elif fparts[idx+2] == "npp" or fparts[idx+2] == "j01":
          self.parse_viirs(fparts, fplen, idx)
+      # This is for GPM 
+      elif fparts[idx+3] == "passiveMicrowave":
+            self.parse_gpm(fparts, fplen, idx)
       # This is for MOSAICS
       elif fparts[idx+2] == "mosaic":
          self.parse_mosaic(fparts, fplen, idx)
@@ -119,6 +122,20 @@ class filePart(object):
          self.chnl = 0
       if fplen >= 9 + idx:
          self.dstr = '{}{}'.format(fparts[idx+7],fparts[idx+8][0:4])
+      else:
+         self.date_error()
+
+   def parse_gpm(self, fparts, fplen, idx):
+      """ parse the avhrr file name for information. """
+      gpm_dict = {'rainRate.nc':'gpmrainrate','overpassTime.nc':'rainratetime'}
+      self.stype = "gpm"
+      try:
+         self.chnl = gpm_dict[fparts[idx+5]]
+      except:
+         self.chnl = 0
+      if fplen >= 6 + idx:
+         self.dstr = '{}{}'.format(fparts[idx],fparts[idx+1][0:4])
+
       else:
          self.date_error()
 
@@ -310,6 +327,8 @@ def openDestinationFile(destpath, channel):
       chstr = "CLW"
    elif channel == "rainrate":
       chstr = "rainrate"
+   elif channel == "gpmrainrate":
+      chstr = "gpmrainrate"
    elif channel == "sst":
       chstr = "SST"
    else:
@@ -536,6 +555,7 @@ def pixel2timedif(pixdif):
 def main():
 
    ingestDir = "/awips2/edex/data/manual" # source for data to mosaic
+   #ingestDir = "/home/awips/tmp" # source for data to mosaic
 
    ##################  Configuration section ########################
    dataStoreDir = "/data_store/manual/regionalsat"  # source for data to mosaic
@@ -560,6 +580,7 @@ def main():
       "rainrate": ('atms','amsu'),
     #  "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
+      "gpmrainrate": ('gpm'),
       "sst": ('viirs','modis','avhrr'),
     #  "ITOP": ('viirsice','modisice'),
     #  "IBOT": ('viirsice','modisice'),
@@ -580,6 +601,7 @@ def main():
       "swe":24,
       "clw":24,
       "sst":36,
+      "gpmrainrate":12,
       "ITOP": 24, 
       "IBOT": 24,
       "IIND": 24,
@@ -626,7 +648,7 @@ def main():
             continue
          dirpath,dstorefile = os.path.split(path)
          # anything else should be good for composite
-         if "Alaska_UAF" in dstorefile or "AKFB" in dstorefile:
+         if "Alaska_UAF" in dstorefile or "AKFB" in dstorefile or "passiveMicrowave" in dstorefile:
             thisfile = filePart(dstorefile)
             fname = thisfile.parse_name()
             filesecs = thisfile.filesecs()
