@@ -127,7 +127,7 @@ class filePart(object):
 
    def parse_gpm(self, fparts, fplen, idx):
       """ parse the avhrr file name for information. """
-      gpm_dict = {'rainRate.nc':'gpmrainrate','overpassTime.nc':'rainratetime'}
+      gpm_dict = {'rainRate.nc':'gpmrainrate','rainRate':'gpmrainrate','overpassTime.nc':'rainratetime'}
       self.stype = "gpm"
       try:
          self.chnl = gpm_dict[fparts[idx+5]]
@@ -294,7 +294,7 @@ def get_filepaths(basedirectory):
     return file_paths
 
 #####################################################################
-def openDestinationFile(destpath, channel):
+def openDestinationFile(destpath, chnlname):
    """ open the destination netcdf file, change attributes, and 
    return the file handle """
    #
@@ -313,32 +313,10 @@ def openDestinationFile(destpath, channel):
    print "Opening file: {}".format(destpath)
    setattr(fh_dest, "satelliteName", "MOSAIC")
    #
-   if channel == "ITOP":
-      chstr = "Icing Top"
-   elif channel == "IBOT":
-      chstr = "Icing Base"
-   elif channel == "IIND":
-      chstr = "Icing Index"
-   elif channel == "tpw":
-      chstr = "TPW"
-   elif channel == "swe":
-      chstr = "SWE"
-   elif channel == "clw":
-      chstr = "CLW"
-   elif channel == "rainrate":
-      chstr = "rainrate"
-   elif channel == "gpmrainrate":
-      chstr = "gpmrainrate"
-   elif channel == "sst":
-      chstr = "SST"
-   else:
-      chstr = "{0} um".format(channel)
-
-   #
    if "mosaicdelta" in destpath:                  # time delta 
-      attstr = "{0} timedelta".format(chstr)
+      attstr = "{0} timedelta".format(chnlname)
    else:
-      attstr = "{0}".format(chstr)
+      attstr = "{0}".format(chnlname)
    setattr(fh_dest, "channel", attstr)
 
    return fh_dest
@@ -578,14 +556,33 @@ def main():
     #  "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
-    #  "seaice": ('atms','amsu'),
-    #  "snowcover": ('atms','amsu'),
       "gpmrainrate": ('gpm'),
+    #  "seaice": ('atms','amsu'),
       "sst": ('viirs','modis','avhrr'),
     #  "ITOP": ('viirsice','modisice'),
     #  "IBOT": ('viirsice','modisice'),
     #  "IIND": ('viirsice','modisice'),
    }
+   mosaicLabelDict = {       # element names that are assigned to the mosaic
+     ".64" : ".64 um",
+     ".86" : ".86 um",
+     "1.6" : "1.6 um",
+     "3.7" : "3.7 um",
+     "6.7" : "6.7 um",
+     "11" :  "11 um",
+     "12" : "12 um",
+     "tpw": "TPW",
+     "swe": "SWE",
+     "clw": "CLW",
+     "rainrate": "rainrate",
+     "gpmrainrate": "gpmrainrate",
+     "seaice": "SeaIceConcentration",
+     "sst": "SST",
+     "ITOP": "Icing Top",
+     "IBOT": "Icing Base",
+     "IIND": "Icing Index",
+   }
+
    timeDeltaFlag = 1     # toggle on/off the creation of time/delta flag
    timeDeltaDict = {     # max time (hrs) for passes used in composites for each channel
       ".64": 12,
@@ -594,14 +591,13 @@ def main():
       "3.7": 24,
       "11": 24,
       "12": 24,
-      "rainrate":12,
-      "seaice":24,
-      "snowcover":24,
       "tpw":24,
       "swe":24,
       "clw":24,
-      "sst":36,
+      "rainrate":12,
       "gpmrainrate":12,
+      "seaice":24,
+      "sst":36,
       "ITOP": 24, 
       "IBOT": 24,
       "IIND": 24,
@@ -749,9 +745,9 @@ def main():
          continue
 
       # Open destination file and redefine global attributes
-      fh_dest = openDestinationFile(mosaicPathname, mosaicChl)
+      fh_dest = openDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl])
       if timeDeltaFlag:
-         fh_tdeldest = openDestinationFile(mosaicDelPathname, mosaicChl)
+         fh_tdeldest = openDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl])
  
       # Need to add time age difference to previous mosaic times
       if mdcnt > 0:

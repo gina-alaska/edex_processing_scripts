@@ -8,7 +8,6 @@ from shutil import copy, move
 import datetime
 from datetime import datetime, timedelta
 import time
-from nucaps4awips import fix_nucaps_file
 
 def _process_command_line():
     """Process the command line arguments.
@@ -32,7 +31,7 @@ def main():
     curtime  = datetime.utcnow()
     logpath="/opt/ldm/var/logs/edex-ingest-LDMsat-{}.log".format(curtime.strftime("%Y%m%d"))
     sys.stdout = sys.stderr = open(logpath, 'a+')
-    tmpDir = "/data_store/download"
+
     ingestDir = "/awips2/edex/data/manual"
 
     args = _process_command_line()
@@ -53,86 +52,42 @@ def main():
         raise SystemExit
 
     filepath = args.filepath
-    # Looking for NUCAPS-EDR files ... remove any other NUCAPS file types
-    if "NUCAPS-ALL" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
-       os.remove(filepath)
-       raise SystemExit
-    if "NUCAPS-OLR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
-       os.remove(filepath)
-       raise SystemExit
-    if "NUCAPS-CCR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
-       os.remove(filepath)
-       raise SystemExit
-    if "NUCAPS_CCR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
-       os.remove(filepath)
-       raise SystemExit
-    if "NUCAPS_CCR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
-       os.remove(filepath)
-       raise SystemExit
+    #print "Valid filepath: {}".format(filepath)
 
-    os.chdir(tmpDir)
+    ################################################3
+    # To stop data flow to AWIPS, uncomment these lines 
+    #os.remove(filepath)
+    #raise SystemExit
+    ################################################3
+    #
+    # this section is only for support of remote file downloads (i.e. carl)
+    #if not os.path.exists(queueDir):
+    #   os.makedirs(queueDir)
+    #print "copying {} to {}".format(filepath, queueDir)
+    #copy(filepath,queueDir)
 
     # look for ".gz" in file path to indicate compression is needed
-    if ".gz" in filepath:
+    if "TEST_UAF" in filepath:
        # determine the filepath directory and base names
        dirnm = os.path.dirname(filepath)
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
-       # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if ".nc" in basenm:
-          newfilepath="{}/{}".format(dirnm, basenm)
-       else:
-          newfilepath="{}/{}.nc".format(dirnm, basenm)
+       newfilenm = filenm[5:]
+       print "New filename: {}".format(newfilenm)
+       # use the directory and base to create a new name without the "TEST" prefix
+       ingestPath="{}/{}".format(ingestDir, newfilenm)
        #
-       # open the compressed file and read out all the contents
-       inF = gzip.GzipFile(filepath, 'rb')
-       s = inF.read()
-       inF.close()
-       # now write uncompressed result to the new filename 
-       outF = file(newfilepath, 'wb')
-       outF.write(s)
-       outF.close()
-       #
-       # make sure the decompression was successful
-       if not os.path.exists(newfilepath):
-          print "Decompression failed: {}".format(filepath)
-          raise SystemExit
-       #
-       print "File decompressed: {}".format(newfilepath)
-       # redirected compression copies to a new file so old compressed file needs to be removed
-       os.remove(filepath)
-       # set the filepath to point to the uncompresses name
-       filepath = newfilepath
-       #
-    if ".nc" in filepath:
-       print "fix nucaps file"
-       newfilename = fix_nucaps_file(filepath)
-       print "new filename = {}".format(newfilename)
-       newfilepath = "{}/{}".format(tmpDir,newfilename)
-       if os.path.exists(newfilepath):
-          # a new converted file has been made so remove the original file
-          print "Removing: {}".format(filepath)
-          os.remove(filepath)
-       else:
-          print "Conversion failed: {}".format(filepath)
-          raise SystemExit
-          
-       # assign filepath to the new converted file
-       filepath = newfilepath
+       # Now the file is uncompressed and renamed with the "Alaska_" prefix. 
        #############################################
        # This section is for future tweaks that may be needed (like netcdf attributes).
        # 
        ##############################################
        #
        # OK, ready to move the file to the ingest directory
-       print "Moving {} to {}".format(filepath, ingestDir)
+       print "Moving {} to {}".format(filepath, ingestPath)
        try:
-          move(filepath,ingestDir)
+          move(filepath,ingestPath)
+          #move(filepath,ingestDir)
        except:
           print "Move to ingest failed. Removing: {}".format(filepath)
           os.remove(filepath)
