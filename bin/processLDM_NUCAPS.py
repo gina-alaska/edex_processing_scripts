@@ -53,6 +53,7 @@ def main():
         raise SystemExit
 
     filepath = args.filepath
+    # Looking for NUCAPS-EDR files ... remove any other NUCAPS file types
     if "NUCAPS-ALL" in filepath:
        print "Unrecognized format: {}  Exiting...".format(args.filepath)
        os.remove(filepath)
@@ -62,6 +63,14 @@ def main():
        os.remove(filepath)
        raise SystemExit
     if "NUCAPS-CCR" in filepath:
+       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       os.remove(filepath)
+       raise SystemExit
+    if "NUCAPS_CCR" in filepath:
+       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       os.remove(filepath)
+       raise SystemExit
+    if "NUCAPS_CCR" in filepath:
        print "Unrecognized format: {}  Exiting...".format(args.filepath)
        os.remove(filepath)
        raise SystemExit
