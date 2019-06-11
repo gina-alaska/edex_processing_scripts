@@ -64,10 +64,10 @@ def main():
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
        #if processFlag:
-       if "G17" in filepath:
-         
+       #if "NOGOES" in filepath:
+       if "G17" in filepath and "RadF" in filepath:
           bgntime  = datetime.utcnow()
-          print "Converting {} to Level 2".format(filepath)
+          print "Converting to Level 2: {}".format(filepath)
           print "Start time: {}Z".format(bgntime.strftime("%Y%m%d %H%M"))
           #commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R ECONUS -S CONUS {}".format(filepath)
           commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R WCONUS -S CONUS {}".format(filepath)
@@ -107,7 +107,7 @@ def main():
        #
     # a file with a UAF prefix and no ".gz" extension is unknown
     else:
-       print "Unrecognized file format. Removing: {}".format(filepath)
+       print "Not interested in this file format. Removing: {}".format(filepath)
        os.remove(filepath)
     #
     return
