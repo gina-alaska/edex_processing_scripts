@@ -1,5 +1,5 @@
 #!/usr/bin/env /awips2/python/bin/python
-"""Get and set attributes on a satellite netcdf file."""
+"""Get and set attributes on a satellite netcdf file. Ver: 1.1"""
 
 import argparse
 import shutil
@@ -117,12 +117,16 @@ def fix_nucaps_file(filepath):
     # it will need revision if the name changes 
     #ddhhmm = "{}{}{}".format(dom,hr,mn)
     #header="\r\r\n830 \r\r\nIUTN06 KNES "+ddhhmm+"\r\r\n"
-    ddhhmmss = "{}{}{}{}".format(dom,hr,mn,sec)
-    header="\r\r\n830 \r\r\nIUTN06 KNES {}\r\r\n".format(ddhhmmss)
+    #ddhhmmss = "{}{}{}{}".format(dom,hr,mn,sec)
+    minnum = int(int(mn)/10)
+    wmoidx = "{}{}".format(minnum,sec)
+    ddhhmm = "{}{}{}".format(dom,hr,mn)
+    #header="\r\r\n830 \r\r\nIUTN06 KNES {}\r\r\n".format(ddhhmmss)
+    header="\r\r\n{} \r\r\nIUTN06 KNES {}\r\r\n".format(wmoidx,ddhhmm)
 
     #headerName = "Alaska_IUTN06_KNES_"+ddhhmmss
-    headerName = "IUTN06_KNES_"+ddhhmmss
-    #print "Header = {}".format(headerName)
+    headerName = "IUTN06_KNES_{}.hdf.{}".format(ddhhmm,wmoidx)
+    print "Header = {}".format(headerName)
     with open(headerName, 'wb') as newfh:
         newfh.write(b'\x01')
         newfh.write(header)
