@@ -7,17 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - update for new GOES and Test LDM processing scripts along with other minor tweaks
 
 ## [Unreleased]
-## [1.0.18] - 2019-06-11
-- minor changes to scripts processing ldm data
 
-##  [1.0.17] - 2018-06-25
+## [1.0.19] - 2019-08-30
+- updated to add the new SCMI mosaic creation tool and startup shell script
+
+#### [1.0.18] - 2019-06-11
+- minor changes to script processing ldm data
+
+## [1.0.17] - 2019-06-25
 - minor tweaks to processing scripts
 
-##  [1.0.16] - 2019-06-11
+## [1.0.16] - 2019-06-11
 - updates to retrieval scripts
 
-##  [1.0.15] - 2019-06-11
+## [1.0.15] - 2019-06-11
 - changes to ldm scripts
+
+## [1.0.14] = 2019-2-22
+- update for new GOES and Test LDM processing scripts along with other minor tweska
 
 ## [1.0.12] - 2018-10-04
 - update to NRT retreval script (getGINAsat.py) for CLAVR-X and to add file string matching
