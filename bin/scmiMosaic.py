@@ -279,7 +279,7 @@ def openDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
    global ypixels
    #
    if not os.path.exists(destpath):
-      print "File not found: {}".format(destpath)
+      print "File not found (open): {}".format(destpath)
       return 0 
       #raise SystemExit
    try:
@@ -298,8 +298,10 @@ def openDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
 
    # read dataset attributes
    fillvalue = dset.attrs['_FillValue']
-   scalefactor = dset.attrs['scale_factor']
-   offset = dset.attrs['add_offset']
+   #scalefactor = dset.attrs['scale_factor']
+   #offset = dset.attrs['add_offset']
+   dset.attrs['scale_factor'] = scalefactor
+   dset.attrs['add_offset'] = offset
 
    # update file attributes    
    destval = dset.value
@@ -341,7 +343,7 @@ def openTimeDelDestinationFile(destpath, chnlname, fileddtt, rundiff, xpos, ypos
    global ypixels
    #
    if not os.path.exists(destpath):
-      print "File not found: {}".format(destpath)
+      print "File not found (open del): {}".format(destpath)
       return 0 
    try:
       h5_fh = h5py.File(destpath, "a")
@@ -406,7 +408,7 @@ def merge_data(destval, destdelval, srcpath, ageval):
    global ageLimit
 #
    if not os.path.exists(srcpath):
-      print "File not found: {}".format(srcpath)
+      print "File not found (merge): {}".format(srcpath)
       return destval
       #raise SystemExit
    try:
@@ -471,7 +473,7 @@ def lastdelta(destpath):
    global fillvalue
    #
    if not os.path.exists(destpath):
-      print "File not found: {}".format(destpath)
+      print "File not found (lastdel): {}".format(destpath)
       return 0 
    try:
       h5_fh = h5py.File(destpath, "a")
@@ -500,23 +502,26 @@ def lastdelta(destpath):
 def main():
 
    ingestDir = "/awips2/edex/data/manual" # source for data to mosaic
-   ##################  Configuration section ########################
    dataStoreDir = "/data_store/manual/goesr"  # source for data to mosaic
+
+   #######################################################################
+   ##################  User Configuration Section ########################
    tmpDir = "/data_store/download" # temp storage for building mosaic until moved to ingest
    #tmpDir = "." # temp storage for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
    #### NOTE: mosaicDict determines what sensor composites to generate. 
    #          Only uncomment the mosaics that are wanted.
-   #    NOTE2: The leading sensor type in the list determins the default scale of the mosaic. 
+   #    NOTE2: The leading sensor type in the list determines the default scale of the mosaic. 
    #           Best results are with the lowest common resolution
    #  - possible mosaicDict bands: .49,.56,.64,.67,.86,1.4,1.6,2.2,3.7,4.0,6.7,7.3,8.6,9.7,10.8,11,12
    #  - possible mosaicDict products: tpw,swe,clw,rainrate,seaice,snowcover,sst,ITOP,IBOT,IIND 
    #  - possible sensors: viirs, modis, avhrr
    mosaicDict = {         # channel and sensors that are to used for the mosaic
+    # "dnb" : ('viirs',),
     # ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
-    #  "3.7" : ('avhrr','modis','viirs'),
+      "3.7" : ('avhrr','modis','viirs'),
     # "6.7" : ('modis'),
       "11" : ('avhrr','modis','viirs'),
     #  "11" : ('viirs','avhrr'),
@@ -525,11 +530,31 @@ def main():
     #  "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
-    #  "sfr": ('atms','amsu'),
+      "sfr": ('atms','amsu'),
       "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
     #  "sst": ('viirs','modis','avhrr'),
    }
+   #
+   timeDeltaDict = {     # max time (hrs) for passes used in composites for each channel
+      "dnb": 8,
+      ".64": 12,
+      ".86": 12,
+      "1.6": 12,
+      "3.7": 24,
+      "11": 24,
+      "12": 24,
+      "tpw":24,
+      "swe":24,
+      "clw":24,
+      "rainrate":8,
+      "sfr":6,
+      "seaice":24,
+      "sst":36,
+   }
+   #################  End User Configuration Section #####################
+   #######################################################################
+
    mosaicPixelResDict = {
      2800: ("modis"),
      2300: ("viirs"),
@@ -539,6 +564,7 @@ def main():
      140 : ("atms","amsu"),
    }
    mosaicFilenmSrchDict = {          # product used to initialize a mosaic
+     "dnb" : ("_dynamic_dnb",),   # pixel res 0.7 km
      ".64" : ("_band1","_vis01","_i01"),   # pixel res 0.3 km
      ".86" : ("_band2","_vis02","_i02"),   # pixel res 0.3 km
      "1.6" : ("_band3a","_vis06","_i03"),  # pixel res 0.3 km
@@ -555,6 +581,7 @@ def main():
      "sst": ("_sst"),       # pixel res 0.7 km
    }
    mosaicLabelDict = {       # element names that are assigned to the mosaic
+     "dnb" : "dnb",
      ".64" : ".64 um",
      ".86" : ".86 um",
      "1.6" : "1.6 um",
@@ -570,15 +597,16 @@ def main():
      "seaice": "MIRS Sea Ice Mosaic",
      "sst": "SST",
    }
-   # For each file type:  numpixels, scale, offset
-   mosaicTileInitDict = {       # basic tile definitions for the mosaic
+   # basic tile definitions for the mosaic 
+   mosaicTileInitDict = {   # For each file type:  numpixels, scale, offset
+     "dnb" : (1000,.00213492,1.59754),
      ".64" : (700,.00213492,1.59754),
      ".86" : (700,.00331741,.011988),
      "1.6" : (700,.00101846,.0468575),
      "3.7" : (700,.00372337,217.358),
      "6.7" : (700,.00250543,206.19),
-     "11" : (700,.00250543,206.19),
-     "12" : (700,.00250543,206.19),
+     "11" : (700,.00335819,208.0),
+     "12" : (700,.00335819,208.0),
      "tpw": (140,.00035389,.604429),
      "swe": (140,.000484954,0),
      "clw": (140,.000000701947,0),
@@ -586,22 +614,6 @@ def main():
      "sfr": (140,.000839236,0),
      "seaice": (140,.000305194,0),
      "sst": (140,.001,0),
-   }
-   #
-   timeDeltaDict = {     # max time (hrs) for passes used in composites for each channel
-      ".64": 12,
-      ".86": 12,
-      "1.6": 12,
-      "3.7": 24,
-      "11": 24,
-      "12": 24,
-      "tpw":24,
-      "swe":24,
-      "clw":24,
-      "rainrate":8,
-      "sfr":6,
-      "seaice":24,
-      "sst":36,
    }
 
    tileSliceDict = {     # max time (hrs) for passes used in composites for each channel
@@ -738,6 +750,8 @@ def main():
       ageLimit = timeDeltaDict[mosaicChl] * 3600  # hrs converted to secs
       print 'Mosaic channel: {} using: {} Max age: {}  pixels: {}'.format(mosaicChl, mosaicSensors, ageLimit, xpixels) 
       print 'Tile defaults xpix: {} scalefactor: {} offset: {}'.format(xpixels, initscale, initoffset) 
+      scalefactor = initscale
+      offset = initoffset
 
       for tileid, (xblk,yblk) in tileSliceDict.iteritems():
          xstart = xblk * xpixels
@@ -765,6 +779,10 @@ def main():
             if "viirs_cl" in path:
                continue
             if "viirs_rain" in path:
+               continue
+            if "hncc_dnb" in path:
+               continue
+            if "adaptive_dnb" in path:
                continue
 
             # check for zero length files
@@ -880,6 +898,9 @@ def main():
                # the mosaic with the new mosaic name 
                copy(prevMosaicPath[2],mosaicPathname)
                copy(prevMosDelPath[2],mosaicDelPathname)
+            else:
+               print "No recent passes and no recent mosaic data... skipping"
+               continue
          elif passOnlyFlag == False and lastTimeDelSecs < ageLimit:
             # Make a copy of the file selected as the starting container for
             # the mosaic with the new mosaic name 
@@ -919,6 +940,7 @@ def main():
                   #print destval[0.0]
                   #print tdeldestval[0.0]
                #
+         print "Working on mosaic: {}".format(mosaicPathname)
          fh_dest = h5py.File(mosaicPathname, "a")
          dset = fh_dest['data']
          dset[...] = destval
