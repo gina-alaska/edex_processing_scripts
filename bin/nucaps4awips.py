@@ -1,5 +1,5 @@
 #!/usr/bin/env /awips2/python/bin/python
-"""Get and set attributes on a satellite netcdf file. Ver: 1.1"""
+"""Get and set attributes on a satellite netcdf file. Ver: 1.2"""
 
 import argparse
 import shutil
@@ -24,6 +24,44 @@ def _process_command_line():
     )
     args = parser.parse_args()
     return args
+
+##############################################################3
+def wmo_header_block(clat, clon):
+
+    if ( -35.0 <= clat < 37.0 and 270.0 <= clon <= 325.0 ):
+          wmostr="IUTN01"
+    elif ( 37.0 <= clat <= 75.0 and 270.0 <= clon <= 325.0 ):
+          wmostr="IUTN02"
+    elif ( -35.0 <= clat < 37.0 and 251.0 <= clon < 270.0 ):
+          wmostr="IUTN03"
+    elif ( 37.0 <= clat <= 75.0 and 251.0 <= clon < 270.0 ):
+ 	  wmostr="IUTN04"
+    elif ( -35.0 <= clat < 42.0 and 220.0 <= clon < 251.0 ):
+          wmostr="IUTN05"
+    elif ( 42.0 <= clat <= 75.0 and 232.0 <= clon < 251.0 ):
+          wmostr="IUTN06"
+    elif ( 42.0 <= clat < 52.0 and 220.0 <= clon < 232.0 ):
+          wmostr="IUTN06"
+    elif ( -35.0 <= clat < 50.0 and 180.0 <= clon < 220.0 ):
+          wmostr="IUTN07"
+    elif ( -35.0 <= clat < 50.0 and 130.0 <= clon < 180.0 ):
+          wmostr="IUTN08"
+    elif ( 42.0 <= clat <= 75.0 and 232.0 <= clon < 251.0 ):
+          wmostr="IUTN06"
+    elif ( 42.0 <= clat < 52.0 and 220.0 <= clon < 232.0 ):
+          wmostr="IUTN06"
+    elif ( -35.0 <= clat < 50.0 and 180.0 <= clon < 220.0 ):
+          wmostr="IUTN07"
+    elif ( -35.0 <= clat < 50.0 and 130.0 <= clon < 180.0 ):
+          wmostr="IUTN08"
+    elif ( 52.0 <= clat <= 75.0 and 220.0 <= clon < 232.0 ):
+          wmostr="IUTN09"
+    elif ( 50.0 <= clat <= 75.0 and 130.0 <= clon < 220.0 ):
+          wmostr="IUTN09"
+    else:
+          wmostr="IUTN06"
+
+    return wmostr
 
 ##############################################################3
 
@@ -52,6 +90,10 @@ def fix_nucaps_file(filepath):
     attr_value = h5_fh.attrs['time_coverage_end']
     attr_new = attr_value[0:19]+"Z"
     h5_fh.attrs['time_coverage_end'] = attr_new
+
+    #Change attribute string: time_coverage_end
+    h5_fh.attrs['satellite_name'] = h5_fh.attrs['platform_name']
+    del h5_fh.attrs["platform_name"]
 
     #Rename variable: Latitude
     h5_fh["Latitude@NUCAPS_EDR"] = h5_fh["Latitude"]
@@ -126,7 +168,7 @@ def fix_nucaps_file(filepath):
 
     #headerName = "Alaska_IUTN06_KNES_"+ddhhmmss
     headerName = "IUTN06_KNES_{}.hdf.{}".format(ddhhmm,wmoidx)
-    print "Header = {}".format(headerName)
+    #print "Header = {}".format(headerName)
     with open(headerName, 'wb') as newfh:
         newfh.write(b'\x01')
         newfh.write(header)
