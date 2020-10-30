@@ -54,6 +54,15 @@ def main():
 
     filepath = args.filepath
     # Looking for NUCAPS-EDR files ... remove any other NUCAPS file types
+    if "IUTN" in filepath:
+       print "Moving {} to {}".format(filepath, ingestDir)
+       try:
+          move(filepath,ingestDir)
+       except:
+          print "Move to ingest failed. Removing: {}".format(filepath)
+          os.remove(filepath)
+       raise SystemExit
+       #
     if "NUCAPS-ALL" in filepath:
        print "Unrecognized format: {}  Exiting...".format(args.filepath)
        os.remove(filepath)
@@ -75,8 +84,11 @@ def main():
        os.remove(filepath)
        raise SystemExit
 
-    os.chdir(tmpDir)
+    print "Skipping conversion process for {}  Exiting...".format(args.filepath)
+    os.remove(filepath)
+    raise SystemExit
 
+    os.chdir(tmpDir)
     # look for ".gz" in file path to indicate compression is needed
     if ".gz" in filepath:
        # determine the filepath directory and base names

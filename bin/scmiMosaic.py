@@ -17,7 +17,7 @@ import h5py
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.96-C
+##  beta version: 0.98-B
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -46,7 +46,13 @@ class filePart(object):
       # Now break down the filename pieces for file info 
       # This is for SNPP VIIRS 
       if "viirs" in self.fname:
-         self.parse_viirs(fparts)
+         # first check for clavr-x products
+         if "_cloud_" in self.fname:
+            self.parse_clavrx(fparts)
+         elif "_cld_" in self.fname:
+            self.parse_clavrx(fparts)
+         else:
+            self.parse_viirs(fparts)
       # This section is for AQUA & TERRA MODIS
       elif "modis" in self.fname:
          self.parse_modis(fparts)
@@ -57,9 +63,11 @@ class filePart(object):
       elif "mosaic" in self.fname:
          self.parse_mosaic(fparts)
       elif "atms" in self.fname:
-         self.parse_microwave(fparts,"atms")
+         self.parse_MIRS(fparts,"atms")
       elif "amsua-mhs" in self.fname:
-         self.parse_microwave(fparts,"amsu")
+         self.parse_MIRS(fparts,"amsu")
+      elif "amsr2" in self.fname:
+         self.parse_GAASP(fparts,"amsr2")
       else:
          self.unknown_error()
       # This is for MOSAICS
@@ -93,7 +101,29 @@ class filePart(object):
          print "Searching VIIRS: idx={}".format(idx)
          self.unknown_error()
 
-   def parse_microwave(self, fparts, sattype):
+   def parse_clavrx(self, fparts):
+      """ parse the clavr-x file name for information. """
+      clavrx_dict = {'height':'cldhgt','temp':'cldtemp','base':'cldbase','type':'cldtype','phase':'cldphase',
+            'rain':'rain','emiss':'cldemiss','cloud':'cloud'}
+      #
+      self.stype = "clavrx"
+      ndx = fparts.index("Polar")
+      if ndx >= 3:
+         self.tilename = fparts[ndx+1]
+         try:
+            self.chnl = clavrx_dict[fparts[ndx-2]]
+         except:
+            self.chnl = '0'
+         if self.chnl == 'cloud':
+            self.chnl = clavrx_dict[fparts[ndx-1]]
+         self.dstr = '{}{}00'.format(fparts[ndx+2],fparts[ndx+3][0:4])
+      else:
+         self.chnl = '0'
+         self.stype = 'unknown'
+         print "Searching CLAVRX: ndx={}".format(ndx)
+         self.unknown_error()
+
+   def parse_MIRS(self, fparts, sattype):
       """ parse the file name for microwave product information. """
       micro_dict = {'tpw':'tpw','rate':'rainrate','clw':'clw','swe':'swe','ice':'seaice',
              'sfr':'sfr','cover':'snowcover','183h1':'bt183h','23v':'bt23v'}
@@ -111,6 +141,26 @@ class filePart(object):
          self.chnl = '0'
          self.stype = 'unknown'
          print "Searching MIRS: idx={}".format(idx)
+         self.unknown_error()
+
+   def parse_GAASP(self, fparts, sattype):
+      """ parse the file name for microwave product information. """
+      gaasp_dict = {'tpw':'tpw','rate':'rainrate','clw':'clw','swe':'swe','ice':'seaice',
+             'sfr':'sfr','cover':'snowcover','183h1':'bt183h','23v':'bt23v'}
+      #
+      self.stype = sattype
+      ndx = fparts.index("Polar")
+      if ndx >= 3:
+         self.tilename = fparts[ndx+1]
+         try:
+            self.chnl = gaasp_dict[fparts[ndx-1]]
+         except:
+            self.chnl = '0'
+         self.dstr = '{}{}00'.format(fparts[ndx+2],fparts[ndx+3][0:4])
+      else:
+         self.chnl = '0'
+         self.stype = 'unknown'
+         print "Searching GAASP: idx={}".format(idx)
          self.unknown_error()
 
    def parse_modis(self, fparts):
@@ -220,7 +270,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96-C')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 0.98-B')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -262,6 +312,9 @@ def get_template_path(filepath, sensors, products):
     for sensor in sensors:
        for prod in products:
           if sensor in filepath and prod in filepath:
+             if os.path.exists(filepath):
+                return (filepath)
+          if sensor == "clavrx" and prod in filepath:
              if os.path.exists(filepath):
                 return (filepath)
 
@@ -502,12 +555,13 @@ def lastdelta(destpath):
 def main():
 
    ingestDir = "/awips2/edex/data/manual" # source for data to mosaic
-   dataStoreDir = "/data_store/manual/goesr"  # source for data to mosaic
+   dataStoreSbnDir = "/data_store/sat"  # NWS source for SCMI data to mosaic
+   dataStoreManDir = "/data_store/manual/goesr"  # source for data to mosaic
 
    #######################################################################
    ##################  User Configuration Section ########################
-   tmpDir = "/data_store/download" # temp storage for building mosaic until moved to ingest
-   #tmpDir = "." # temp storage for building mosaic until moved to ingest
+   tmpDir = "/localapps/runtime/satellite/tmp" # tmp directory for building mosaic until moved to ingest
+   tmpDir2 = "/data_store/download" # 2nd choice directory for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
    #### NOTE: mosaicDict determines what sensor composites to generate. 
    #          Only uncomment the mosaics that are wanted.
@@ -522,10 +576,9 @@ def main():
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
       "3.7" : ('avhrr','modis','viirs'),
-    # "6.7" : ('modis'),
+    # "6.7" : ('modis',),
       "11" : ('avhrr','modis','viirs'),
-    #  "11" : ('viirs','avhrr'),
-    #  "12" : ('avhrr','modis','viirs'),
+      "12" : ('avhrr','modis','viirs'),
       "tpw": ('atms','amsu'),
     #  "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
@@ -533,7 +586,9 @@ def main():
       "sfr": ('atms','amsu'),
       "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
-    #  "sst": ('viirs','modis','avhrr'),
+      "sst": ('viirs','modis','avhrr'),
+      "cldhgt": ('clavrx',),
+    # "cldbase": ('clavrx',),
    }
    #
    timeDeltaDict = {     # max time (hrs) for passes used in composites for each channel
@@ -551,34 +606,41 @@ def main():
       "sfr":6,
       "seaice":24,
       "sst":36,
+      "cldhgt":24,
+      "cldbase":24,
    }
    #################  End User Configuration Section #####################
    #######################################################################
 
    mosaicPixelResDict = {
-     2800: ("modis"),
-     2300: ("viirs"),
-     1400: ("modis"),
-     1000: ("viirs"),
-     700 : ("avhrr", "modis"),
+     2800: ("modis",),
+     2300: ("viirs",),
+     1400: ("modis",),
+     1000: ("viirs","clavrx"),
+     700 : ("avhrr", "modis","clavrx"),
      140 : ("atms","amsu"),
    }
-   mosaicFilenmSrchDict = {          # product used to initialize a mosaic
+   #  this is a dictionary of filename patterns used to search for a 
+   #  template to use as a container for building the mosaic. The content
+   #  doesn't matter except the data array should be similar
+   mosaicFilenmSrchDict = {
      "dnb" : ("_dynamic_dnb",),   # pixel res 0.7 km
-     ".64" : ("_band1","_vis01","_i01"),   # pixel res 0.3 km
-     ".86" : ("_band2","_vis02","_i02"),   # pixel res 0.3 km
-     "1.6" : ("_band3a","_vis06","_i03"),  # pixel res 0.3 km
-     "3.7" : ("_band3b","_bt20","_i04"),  # pixel res 0.3 km
-     "6.7" : ("_bt27"),                # pixel res 1.0 km
-     "11" :  ("_band4","_bt31","_i05"),   # pixel res 0.3 km
-     "12" : ("_band5","_bt32","_m16"),    # pixel res 0.7 km
-     "tpw": ("_tpw","_tpw"),   # pixel res 1.0 km
-     "swe": ("_swe","_swe"),   # pixel res 1.0 km
-     "clw": ("_clw","_clw"),        # pixel res 1.0 km
-     "rainrate": ("_rain","_rain"),   # pixel res 1.0 km
-     "sfr": ("_sfr","_sfr"),         # pixel res 1.0 km
-     "seaice": ("_sea_ice","_sea_ice"),  # pixel res 1.0 km
-     "sst": ("_sst"),       # pixel res 0.7 km
+     ".64" : ("_band1",),   # pixel res 1.0 km
+     ".86" : ("_band2",),   # pixel res 1.0 km
+     "1.6" : ("_band3a",),  # pixel res 1.0 km
+     "3.7" : ("_band3b",),  # pixel res 1.0 km
+     "6.7" : ("_bt27",),                # pixel res 1.0 km
+     "11" :  ("_band4","_bt31"),   # pixel res 1.0 km
+     "12" : ("_band5","_bt32"),    # pixel res 1.0 km
+     "tpw": ("_tpw",),   # pixel res 5.0 km
+     "swe": ("_swe",),   # pixel res 5.0 km
+     "clw": ("_clw",),        # pixel res 5.0 km
+     "rainrate": ("atms_rain","amsua-mhs_rain"),   # pixel res 5.0 km
+     "sfr": ("_sfr",),         # pixel res 5.0 km
+     "seaice": ("_sea_ice",),  # pixel res 5.0 km
+     "sst": ("viirs_sst","modis_sst"),       # pixel res 0.7 km
+     "cldhgt": ("_cld_height_acha",),  # pixel res 0.7 km
+     "cldbase": ("_cld_height_base",),  # pixel res 0.7 km
    }
    mosaicLabelDict = {       # element names that are assigned to the mosaic
      "dnb" : "dnb",
@@ -596,10 +658,12 @@ def main():
      "sfr": "MIRS SFR Mosaic",
      "seaice": "MIRS Sea Ice Mosaic",
      "sst": "SST",
+     "cldhgt": "Cld Top Hgt",
+     "cldbase": "Cld Base Hgt",
    }
    # basic tile definitions for the mosaic 
    mosaicTileInitDict = {   # For each file type:  numpixels, scale, offset
-     "dnb" : (1000,.00213492,1.59754),
+     "dnb" : (1000,.0000305,0),
      ".64" : (700,.00213492,1.59754),
      ".86" : (700,.00331741,.011988),
      "1.6" : (700,.00101846,.0468575),
@@ -607,14 +671,20 @@ def main():
      "6.7" : (700,.00250543,206.19),
      "11" : (700,.00335819,208.0),
      "12" : (700,.00335819,208.0),
-     "tpw": (140,.00035389,.604429),
+     "tpw": (140,.00117597,5.2),
      "swe": (140,.000484954,0),
      "clw": (140,.000000701947,0),
      "rainrate": (140,.000839236,0),
      "sfr": (140,.000839236,0),
-     "seaice": (140,.000305194,0),
-     "sst": (140,.001,0),
+     "seaice": (140,.00305194,0),
+     "sst": (1000,.00073,271),
+     "cldhgt": (700,.6081,75),
+     "cldbase": (700,.6081,75),
    }
+
+   # this list helps to avoid unnecessary processing 
+   fileIgnoreList = ["crefl", "viirs_cloud", "viirs_rain", "cld_temp", "cld_reff", "cld_opd", "cld_emiss", 
+                     "hncc_dnb", "adaptive_dnb", "OT_WCONUS"]
 
    tileSliceDict = {     # max time (hrs) for passes used in composites for each channel
       "TA01": (0,0),
@@ -709,7 +779,15 @@ def main():
    global ageLimit
    global gridsize
 
-   TESTFLAG = 1
+   if os.path.isdir(tmpDir):
+      print "Tmp directory for building mosaic: {}".format(tmpDir)
+   elif os.path.isdir(tmpDir2):
+      tmpDir = tmpDir2
+      print "Tmp directory for building mosaic: {}".format(tmpDir)
+   else:
+      tmpDir = "/tmp"
+      print "Tmp directory for building mosaic: {}".format(tmpDir)
+
    agelimit = 12           # default age limit if not specified in timeDeltaDict
    xpixels = 700 
    ypixels = 700 
@@ -737,8 +815,12 @@ def main():
       passOnlyFlag = True 
       print "Initialing only with pass data. Ignoring previous mosaics"
 
+   all_sbn_paths = []
+   all_man_paths = []
    all_file_paths = []
-   all_file_paths = get_filepaths(dataStoreDir)
+   all_sbn_paths = get_filepaths(dataStoreSbnDir)
+   all_man_paths = get_filepaths(dataStoreManDir)
+   all_file_paths = all_sbn_paths + all_man_paths
    #
    for key, value in mosaicDict.iteritems():
       mosaicSensors = value 
@@ -773,17 +855,11 @@ def main():
          mosaicdel_paths = []
          ##############################333  
          for path in all_file_paths:
-            ### skip certain product groups for now ####
-            if "crefl" in path:
-               continue
-            if "viirs_cl" in path:
-               continue
-            if "viirs_rain" in path:
-               continue
-            if "hncc_dnb" in path:
-               continue
-            if "adaptive_dnb" in path:
-               continue
+            ### skip certain product groups to avoid unneccary processing ####
+            for ignorestr in fileIgnoreList:
+                if ignorestr in path:
+                   #print "Skipping {}".format(path)
+                   continue
 
             # check for zero length files
             if not os.path.exists(path) or os.stat(path).st_size == 0:
