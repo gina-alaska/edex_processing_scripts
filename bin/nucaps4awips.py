@@ -1,5 +1,5 @@
 #!/usr/bin/env /awips2/python/bin/python
-"""Get and set attributes on a satellite netcdf file. Ver: 1.2"""
+"""Get and set attributes on a satellite netcdf file. Ver: 1.3"""
 
 import argparse
 import shutil
@@ -7,6 +7,7 @@ from shutil import copy, copyfileobj
 import os
 import h5py
 import sys
+import numpy as np
 # import numpy
 
 def _process_command_line():
@@ -67,13 +68,16 @@ def wmo_header_block(clat, clon):
 
 def fix_nucaps_file(filepath):
 
+    newfilepath = filepath+".tmp"
+    copy(filepath, newfilepath)
+
     try:
-       h5_fh = h5py.File(filepath, "a")
+       h5_fh = h5py.File(newfilepath, "a")
     except IOError:
-       print 'Error opening {}'.format(filepath)
+       print 'Error opening {}'.format(newfilepath)
        raise SystemExit
     except OSError:
-       print 'Error accessing {}'.format(filepath)
+       print 'Error accessing {}'.format(newfilepath)
        raise SystemExit
 
     #Change attribute string: time_coverage_end
@@ -85,6 +89,20 @@ def fix_nucaps_file(filepath):
     mn = attr_value[14:16]
     sec = attr_value[17:19]
     h5_fh.attrs['time_coverage_start'] = attr_new
+
+    #determine the center lat/lon to assign a WMO header
+    lats = h5_fh['Latitude'].value
+    lons = h5_fh['Longitude'].value
+    minlat = np.min(lats)
+    maxlat = np.max(lats)
+    minlon = np.min(lons)
+    maxlon = np.max(lons)
+    #print "MxMn lat = {}/{} MxMn lon = {}/{}".format(minlat, maxlat, minlon, maxlon)
+    clat=(minlat + maxlat)/2
+    clon=(minlon + maxlon)/2
+    if clon < 0.0:
+       clon=clon+360
+    #print 'Center lat/lon in 360 framework: {}/{}'.format(clat,clon)
 
     #Change attribute string: time_coverage_end
     attr_value = h5_fh.attrs['time_coverage_end']
@@ -160,22 +178,27 @@ def fix_nucaps_file(filepath):
     #ddhhmm = "{}{}{}".format(dom,hr,mn)
     #header="\r\r\n830 \r\r\nIUTN06 KNES "+ddhhmm+"\r\r\n"
     #ddhhmmss = "{}{}{}{}".format(dom,hr,mn,sec)
+    #minnum = int(int(mn)/10)
+    #wmoidx = "{}{}".format(minnum,sec)
+    #ddhhmm = "{}{}{}".format(dom,hr,mn)
+    wmoblock = wmo_header_block(clat,clon)
     minnum = int(int(mn)/10)
     wmoidx = "{}{}".format(minnum,sec)
     ddhhmm = "{}{}{}".format(dom,hr,mn)
     #header="\r\r\n830 \r\r\nIUTN06 KNES {}\r\r\n".format(ddhhmmss)
-    header="\r\r\n{} \r\r\nIUTN06 KNES {}\r\r\n".format(wmoidx,ddhhmm)
+    header="\r\r\n{} \r\r\n{} KNES {}\r\r\n".format(wmoidx,wmoblock,ddhhmm)
 
-    #headerName = "Alaska_IUTN06_KNES_"+ddhhmmss
-    headerName = "IUTN06_KNES_{}.hdf.{}".format(ddhhmm,wmoidx)
+    #headerName = "IUTN06_KNES_{}.hdf.{}".format(ddhhmm,wmoidx)
+    headerName = "{}_KNES_{}.hdf.{}".format(wmoblock,ddhhmm,wmoidx)
     #print "Header = {}".format(headerName)
     with open(headerName, 'wb') as newfh:
         newfh.write(b'\x01')
         newfh.write(header)
-        with open(filepath,'rb') as prevfh:
+        with open(newfilepath,'rb') as prevfh:
            copyfileobj(prevfh, newfh)
            prevfh.close()
         newfh.close()
+        os.remove(newfilepath)
         #print 'awipsfile = ',headerName
         return headerName
 
