@@ -31,6 +31,9 @@ def _process_command_line():
         '-s', '--tstamp', action='store_true', help='show time stamps only'
     )
     parser.add_argument(
+        '-b', '--abbrev', action='store_true', help='abbreviate results'
+    )
+    parser.add_argument(
        '-v', '--verbose', action='store_true', help='verbose flag'
     )
     args = parser.parse_args()
@@ -228,8 +231,9 @@ def main():
     if count > 0:
        file_times.sort()
        if args.tstamp:
-          for ddttstr in file_times:
-              print "{}".format(ddttstr)
+          if  not args.abbrev:
+             for ddttstr in file_times:
+                print "{}".format(ddttstr)
        avglatency = sumlatency / count
        print "Products found: {}".format(count)
        print "Avg latency = {:.1f} min".format(avglatency)

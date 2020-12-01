@@ -52,22 +52,6 @@ def main():
        print "Ignoring Ingest. Removing: {}".format(args.filepath)
        os.remove(filepath)
        raise SystemExit
-    ################################################
-    # this section is only for support of remote file downloads (i.e. by carl)
-    #if "RIVER" in filepath:
-    #   queueDir = "/data_store/ldmqueue"
-    #   if not os.path.exists(queueDir):
-    #      os.makedirs(queueDir)
-    #      os.chmod(queueDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-    #   fnum = len(os.listdir(queueDir))
-    #   if fnum < queueLimit:
-    #      print "copying {} to {}".format(filepath, queueDir)
-    #      copy(filepath,queueDir)
-    #      quefilepath = '{}/{}'.format(queueDir, filenm)
-    #      os.chmod(quefilepath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-    #   else:
-    #      print "Skip copy. Too many files in queue: {}".format(fnum)
-    ################################################
 
     # look for "SSEC" in file path to indicate compression is needed even tho ".gz" is missing
     if "SSEC" in filepath:
@@ -75,13 +59,33 @@ def main():
        dirnm = os.path.dirname(filepath)
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if ".nc" in basenm:
-          newfilepath="{}/Alaska_{}".format(dirnm, basenm)
+       if "goesr_fog" in basenm:
+          # OK, ready to move the file to the ingest directory
+          if ".nc" in filepath:
+             print "Found GOES17 fog: {}".format(filepath)
+             # OK, ready to move the file to the ingest directory
+             print "Moving {} to {}".format(filepath, ingestDir)
+             try:
+                move(filepath,ingestDir)
+             except:
+                print "Move to ingest failed. Removing: {}".format(filepath)
+                os.remove(filepath)
+          else:
+             print "Removing text or json files: {}".format(filepath)
+             os.remove(filepath)
+          return
+       #
        elif "MIMIC" in basenm:
           print "File MIMIC file: {}/{}".format(dirnm, basenm)
           newfilepath="{}/LDADGRIB_{}".format(dirnm, basenm)
+       elif "VIIRS-APRFC" in basenm:
+          # The "Alaska_" prefix is needed for "regionalsat" format.
+          print "River Ice & Flood product: {}/{}".format(dirnm, basenm)
+          newfilepath="{}/Alaska_{}".format(dirnm, basenm)
        else:
-          newfilepath="{}/Alaska_{}.nc".format(dirnm, basenm)
+          print "Unrecognized SSEC file type: {}".format(filepath)
+          os.remove(filepath)
+          return
        #
        # open the compressed file and read out all the contents
        inF = gzip.GzipFile(filepath, 'rb')
@@ -102,13 +106,6 @@ def main():
        os.remove(filepath)
        # set the filepath to point to the uncompresses name
        filepath = newfilepath
-       #
-       # Now the file is uncompressed and renamed with the "Alaska_" prefix.
-       #############################################
-       # This section is for future tweaks that may be needed (like netcdf attributes).
-       # 
-       ##############################################
-       #
        # OK, ready to move the file to the ingest directory
        print "Moving {} to {}".format(filepath, ingestDir)
        try:
