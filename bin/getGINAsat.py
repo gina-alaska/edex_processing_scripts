@@ -55,7 +55,7 @@ def _process_command_line():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'sensor', nargs='+', choices=['viirs','modis','metop','avhrr','atms'],
+        'sensor', nargs='+', choices=['viirs','modis','metop','avhrr','atms','amsr2'],
         help='satellite sensors to download'
     )
     parser.add_argument(
@@ -64,7 +64,7 @@ def _process_command_line():
         '-m', '--match', action='store', default='', help='match substring in filename')
     parser.add_argument(
         '-l', '--level', action='store', default='awips', choices=['awips',
-        'mirs_awips','scmi','sst_awips','nucaps_level2','clavrx_scmi'], help='format type')
+        'mirs_awips','mirs_scmi','scmi','sst_awips','nucaps_level2','clavrx_scmi', 'level2'], help='format type')
     parser.add_argument(
         '-t', '--test', action='store_true', help='use test NRT data stream')
     parser.add_argument(
@@ -111,7 +111,7 @@ def main():
    endstr = endtime.strftime("%Y-%m-%d+%H%M")
    #print "format={}  satellite={}".format(level, satellite) 
    ######
-   dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0,"atms":0}
+   dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0,"atms":0,"amsr2":0}
    #
    if verbose:
       print "Dates: ",bgnstr," / ",endstr
@@ -171,8 +171,9 @@ def main():
             if verbose: 
                print "Basename = {}".format(basenm)
             # use base name to create a new name with "Alaska" prefix and ".nc" extension
-            if level == 'scmi' or level == 'clavrx_scmi':
-               newfilename="AKPOLAR_{}.nc".format(basenm)
+            if level == 'scmi' or level == 'clavrx_scmi' or level == 'mirs_scmi' or level == 'level2':
+               #newfilename="AKPOLAR_{}.nc".format(basenm)
+               newfilename=filename
             elif level == 'nucaps_level2':
                newfilename=basenm
             else:
