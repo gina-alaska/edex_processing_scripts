@@ -77,9 +77,14 @@ def main():
           convertFlag = 0
           for thisfile in glob.glob('./OT_WCONUS*'):
              # OK, ready to move the file to the ingest directory
-             print "Moving {} to {}".format(thisfile, ingestDir)
+             #print "Moving {} to {}".format(thisfile, ingestDir)
+             thisfilename = thisfile[2:] 
+             print "inserting {} in ldm queue ".format(thisfilename, ingestDir)
              try:
-                move(thisfile,ingestDir)
+                commandstr = "pqinsert -q /opt/ldm/var/queues/ldm.pq -f EXP {}".format(thisfilename)
+                os.system(commandstr)
+                #move(thisfile,ingestDir)
+                os.remove(thisfile)
                 convertFlag = 1
              except:
                 print "Move to ingest failed. Removing: {}".format(thisfile)
@@ -95,12 +100,6 @@ def main():
           else:
              print "Conversion was unsuccessful"
          
-          # now convert to an SCMI grid
-          #if "M3C13" in filepath:
-          #   print "Creating SCMI tiles"
-          #   commandstr = "/home/awips/geo2grid/bin/geo2grid.sh -r abi_l1b -w scmi --sector_id TR04 -f {}".format(filepath) 
-          #   os.system(commandstr)
- 
        # Make sure to remove Level 1b files 
        print "Removing: {}".format(filepath)
        os.remove(filepath)
