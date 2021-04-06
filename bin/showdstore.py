@@ -168,17 +168,16 @@ def main():
 
     curtime  = datetime.utcnow()
     if args.day is not None:
-        if args.day > 31:
+        if int(args.day) > 31:
            dom = int(args.day) % 100
            mon = int(args.day) / 100
            subDir = '{}{:02}{:02}'.format(curtime.strftime("%Y"),mon,dom)
         else:
            subDir = '{}{:02}'.format(curtime.strftime("%Y%m"),int(args.day))
-        print subDir
         paths = get_filepaths('{}/{}'.format(searchpath,subDir))
     else:
         subDir = curtime.strftime("%Y%m%d")
- 
+    print subDir
     paths = get_filepaths('{}/{}'.format(searchpath,subDir))
     paths.sort(reverse=True)
 

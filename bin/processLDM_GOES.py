@@ -33,7 +33,7 @@ def main():
     logpath="/opt/ldm/var/logs/edex-ingest-LDMsat-{}.log".format(curtime.strftime("%Y%m%d"))
     sys.stdout = sys.stderr = open(logpath, 'a+')
 
-    ingestDir = "/awips2/edex/data/manual"
+    ingestDir = "/data_store/dropbox"
     workingDir = "/data_store/download"
 
     args = _process_command_line()
@@ -56,59 +56,67 @@ def main():
     filepath = args.filepath
     #print "Valid filepath: {}".format(filepath)
 
-    # look for ".gz" in file path to indicate compression is needed
+    # look GOES prefix in file path
     if "OR_ABI" in filepath:
        # determine the filepath directory and base names
        os.chdir(workingDir)
        dirnm = os.path.dirname(filepath)
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
-       #if processFlag:
-       #if "NOGOES" in filepath:
+       #Only process GOES-17
        if "G17" in filepath and "RadF" in filepath:
+          channel = basenm[16:21]
           bgntime  = datetime.utcnow()
-          print "Converting to Level 2: {}".format(filepath)
+          print "Converting {} to Level 2: {}".format(channel, filepath)
           print "Start time: {}Z".format(bgntime.strftime("%Y%m%d %H%M"))
           #commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R ECONUS -S CONUS {}".format(filepath)
           commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R WCONUS -S CONUS {}".format(filepath)
-          os.system(commandstr)
+          try:
+             os.system(commandstr)
+          except:
+             print "Conversion was unsuccessful"
           #
           # OK, ready to move the file to the ingest directory
-          convertFlag = 0
           for thisfile in glob.glob('./OT_WCONUS*'):
-             # OK, ready to move the file to the ingest directory
-             #print "Moving {} to {}".format(thisfile, ingestDir)
+             if not channel in thisfile:
+                 #print "No {} in {}".format(channel, thisfile)
+                 continue
+             #if not os.path.exists(thisfile):
+             #   print "File does not exist: {}".format(thisfile)
+             #   continue
+             # OK, ready to instert the converted file to LDM
              thisfilename = thisfile[2:] 
-             print "inserting {} in ldm queue ".format(thisfilename, ingestDir)
+             print "Inserting {} in ldm queue ".format(thisfilename)
+             commandstr = "pqinsert -q /opt/ldm/var/queues/ldm.pq -f EXP {}".format(thisfilename)
+             # test if the insertion was successful
              try:
-                commandstr = "pqinsert -q /opt/ldm/var/queues/ldm.pq -f EXP {}".format(thisfilename)
                 os.system(commandstr)
-                #move(thisfile,ingestDir)
-                os.remove(thisfile)
-                convertFlag = 1
              except:
-                print "Move to ingest failed. Removing: {}".format(thisfile)
-                try:
-                   os.remove(thisfile)
-                except:
-                   print "Unable to remove: {}".format(thisfile)
+                print "ldm queue insertion failed. Removing: {}".format(thisfilename)
+             # Now remove the converted file
+             level2path = "{}/{}".format(workingDir,thisfilename) 
+             print "Deleting: {}".format(level2path)
+             try:
+                os.remove(level2path)
+             except OSError as e: # name the Exception `e`
+                print "Failed with:", e.strerror # look what it says
+                #print "Error code:", e.code 
+             #except:
+             #   print "Unable to remove: {}".format(level2path)
              #
-          if convertFlag:
-             endtime  = datetime.utcnow()
-             print "Conversion and ingest was successful"
-             print "End time: {}Z".format(endtime.strftime("%Y%m%d %H%M"))
-          else:
-             print "Conversion was unsuccessful"
-         
-       # Make sure to remove Level 1b files 
-       print "Removing: {}".format(filepath)
-       os.remove(filepath)
-       #
-    # a file with a UAF prefix and no ".gz" extension is unknown
+    # a file without the OR_ABI prefix is unknown
     else:
-       print "Not interested in this file format. Removing: {}".format(filepath)
+       print "Unknown filename: {}".format(filepath)
+    
+    print "Removing: {}".format(filepath)
+    try:
        os.remove(filepath)
+    except:
+       print "Unable to remove: {}".format(thisfilename)
     #
+    endtime  = datetime.utcnow()
+    print "End time: {}Z".format(endtime.strftime("%Y%m%d %H%M"))
+    
     return
 
 if __name__ == '__main__':
