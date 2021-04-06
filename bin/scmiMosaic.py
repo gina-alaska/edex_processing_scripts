@@ -17,7 +17,7 @@ import h5py
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.98-B
+##  version: 1.0
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -270,7 +270,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 0.98-B')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 1.0')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -321,9 +321,9 @@ def get_template_path(filepath, sensors, products):
     return ""
 
 #####################################################################
-def openDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
-   """ open the destination netcdf file, change attributes, and 
-   return the file handle """
+def initDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
+   """ Initialize the destination netcdf file, change attributes, and 
+   return the data array """
    #
    global fillvalue
    global scalefactor
@@ -332,21 +332,18 @@ def openDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
    global ypixels
    #
    if not os.path.exists(destpath):
-      print "File not found (open): {}".format(destpath)
-      return 0 
-      #raise SystemExit
+      print "ERROR. File to init destination not found: {}".format(destpath)
+      return np.zeros(1) 
    try:
       h5_fh = h5py.File(destpath, "a")
    except IOError:
-      print 'Error accessing {}'.format(destpath)
-      return 0
-      # raise SystemExit
+      print 'ERROR. Destination I/O access (init): {}'.format(destpath)
+      return np.zeros(1) 
    except OSError:
-      print 'Error accessing {}'.format(destpath)
-      return 0
-      # raise SystemExit
+      print 'ERROR. Destination System access (init): {}'.format(destpath)
+      return np.zeros(1) 
    #
-   print "Reading file: {}".format(destpath)
+   print "Initializing destination file: {}".format(destpath)
    dset = h5_fh['data']
 
    # read dataset attributes
@@ -374,7 +371,7 @@ def openDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
       h5_fh.attrs['product_rows'] = ypixels * 10 
       h5_fh.attrs['tile_column_offset'] = xpos 
       h5_fh.attrs['tile_row_offset'] = ypos 
-      destval.fill(np.asscalar(fillvalue))
+    #  destval.fill(np.asscalar(fillvalue))
       yvals = np.arange(ypos, ypos+ypixels).astype(int16)
       xvals = np.arange(xpos, xpos+xpixels).astype(int16)
       xset = h5_fh['x']
@@ -387,25 +384,25 @@ def openDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
 
    return destval
 #####################################################################
-def openTimeDelDestinationFile(destpath, chnlname, fileddtt, rundiff, xpos, ypos):
-   """ open the destination netcdf file, change attributes, and 
-   return the file handle """
+def initTimeDelDestinationFile(destpath, chnlname, fileddtt, rundiff, xpos, ypos):
+   """ Initialize the time delta destination netcdf file, change attributes, and 
+   return the time delta array """
    #
    global fillvalue
    global xpixels
    global ypixels
    #
    if not os.path.exists(destpath):
-      print "File not found (open del): {}".format(destpath)
-      return 0 
+      print "ERROR. File for tdel init not found: {}".format(destpath)
+      return np.zeros(1) 
    try:
       h5_fh = h5py.File(destpath, "a")
    except IOError:
-      print 'Error accessing {}'.format(destpath)
-      return 0
+      print 'ERROR. Tdel I/O access (initTD) : {}'.format(destpath)
+      return np.zeros(1) 
    except OSError:
-      print 'Error accessing {}'.format(destpath)
-      return 0
+      print 'ERROR. Tdel System access (initTD): {}'.format(destpath)
+      return np.zeros(1) 
    #
    print "Reading TimeDel file: {}".format(destpath)
    dset = h5_fh['data']
@@ -461,19 +458,16 @@ def merge_data(destval, destdelval, srcpath, ageval):
    global ageLimit
 #
    if not os.path.exists(srcpath):
-      print "File not found (merge): {}".format(srcpath)
-      return destval
-      #raise SystemExit
+      print "ERROR: Source file to merge not found: {}".format(srcpath)
+      return (destval, destdelval)
    try:
       fh_src = h5py.File(srcpath, "r")
    except IOError:
-      print 'Error accessing {}'.format(srcpath)
-      return destval
-      #raise SystemExit
+      print 'ERROR. I/O access of source to merge: {}'.format(srcpath)
+      return (destval, destdelval)
    except OSError:
-      print 'Error accessing {}'.format(srcpath)
-      return destval 
-      #raise SystemExit
+      print 'ERROR. System access of source to merge: {}'.format(srcpath)
+      return (destval, destdelval)
    #
    #
    print "Overlaying Data: {}".format(srcpath)
@@ -526,15 +520,15 @@ def lastdelta(destpath):
    global fillvalue
    #
    if not os.path.exists(destpath):
-      print "File not found (lastdel): {}".format(destpath)
+      print "ERROR. Destination file not found (lastdel): {}".format(destpath)
       return 0 
    try:
       h5_fh = h5py.File(destpath, "a")
    except IOError:
-      print 'Error accessing {}'.format(destpath)
+      print 'ERROR. Destination I/O access (lastdel) {}'.format(destpath)
       return 0
    except OSError:
-      print 'Error accessing {}'.format(destpath)
+      print 'ERROR. Destination System access (lastdel) {}'.format(destpath)
       return 0
    #
    dset = h5_fh['data']
@@ -554,10 +548,9 @@ def lastdelta(destpath):
 
 def main():
 
-   ingestDir = "/awips2/edex/data/manual" # source for data to mosaic
+   ingestDir = "/data_store/dropbox" # source for data to mosaic
    dataStoreSbnDir = "/data_store/sat"  # NWS source for SCMI data to mosaic
    dataStoreManDir = "/data_store/manual/goesr"  # source for data to mosaic
-
    #######################################################################
    ##################  User Configuration Section ########################
    tmpDir = "/localapps/runtime/satellite/tmp" # tmp directory for building mosaic until moved to ingest
@@ -568,7 +561,7 @@ def main():
    #    NOTE2: The leading sensor type in the list determines the default scale of the mosaic. 
    #           Best results are with the lowest common resolution
    #  - possible mosaicDict bands: .49,.56,.64,.67,.86,1.4,1.6,2.2,3.7,4.0,6.7,7.3,8.6,9.7,10.8,11,12
-   #  - possible mosaicDict products: tpw,swe,clw,rainrate,seaice,snowcover,sst,ITOP,IBOT,IIND 
+   #  - possible mosaicDict products: tpw,swe,clw,rainrate,seaice,snowcover,sst,cldhgt,cldbase 
    #  - possible sensors: viirs, modis, avhrr
    mosaicDict = {         # channel and sensors that are to used for the mosaic
     # "dnb" : ('viirs',),
@@ -579,8 +572,8 @@ def main():
     # "6.7" : ('modis',),
       "11" : ('avhrr','modis','viirs'),
       "12" : ('avhrr','modis','viirs'),
-      "tpw": ('atms','amsu'),
-    #  "swe": ('atms','amsu'),
+    #  "tpw": ('atms','amsu'),
+      "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
       "sfr": ('atms','amsu'),
@@ -603,9 +596,9 @@ def main():
       "swe":24,
       "clw":24,
       "rainrate":8,
-      "sfr":6,
+      "sfr":8,
       "seaice":24,
-      "sst":36,
+      "sst":24,
       "cldhgt":24,
       "cldbase":24,
    }
@@ -615,7 +608,7 @@ def main():
    mosaicPixelResDict = {
      2800: ("modis",),
      2300: ("viirs",),
-     1400: ("modis",),
+     1400: ("viirs", "modis",),
      1000: ("viirs","clavrx"),
      700 : ("avhrr", "modis","clavrx"),
      140 : ("atms","amsu"),
@@ -677,9 +670,9 @@ def main():
      "rainrate": (140,.000839236,0),
      "sfr": (140,.000839236,0),
      "seaice": (140,.00305194,0),
-     "sst": (1000,.00073,271),
-     "cldhgt": (700,.6081,75),
-     "cldbase": (700,.6081,75),
+     "sst": (1400,.00073,271),
+     "cldhgt": (1000,.6081,75),
+     "cldbase": (1000,.6081,75),
    }
 
    # this list helps to avoid unnecessary processing 
@@ -951,7 +944,8 @@ def main():
             # to start the mosaic. Attributes will be changed and data loaded later on. This is needed because
             # the AWIPS python version is too old to create a blank mosaic file correctly.
             if len(templatePath) > 3:
-               #  this is for saving a file to use as a template when there are missing mosaic files to initialize with 
+               #  this is for saving a file to use as a template when there are missing 
+               #  mosaic files to initialize with 
                print "Template path = {}".format(templatePath)
                prevMosaicPath = (backsecs, '.', templatePath)
                prevMosDelPath = (backsecs, '.', templatePath)
@@ -991,12 +985,17 @@ def main():
             print "last file: {0} | Reference time: {1}".format(lastPassPath[0],refsecs)
 
          # Open destination file and redefine global attributes
-         destval = openDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl], curfileddtt, xstart, ystart, initTileFlag)
+         destval = initDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl], curfileddtt, xstart, ystart, initTileFlag)
+         if np.size(destval) < 2:
+            print "File problem. Skipping {}".format(mosaicPathname)
+            continue
          # Open tile delta destination file and redefine global attributes
          runtimediff = cursecs - int(prevMosDelPath[0])
-         tdeldestval = openTimeDelDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl], curfileddtt, 
-		runtimediff, xstart, ystart)
-         
+         tdeldestval = initTimeDelDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl], curfileddtt, runtimediff, xstart, ystart)
+         if np.size(tdeldestval) < 2:
+            print "File problem. Skipping {}".format(mosaicDelPathname)
+            continue
+        
          ## Now step through the list of more recent single band data
          ## and lay each successive pass over the earlier one
          if passcnt > 0:
@@ -1005,7 +1004,6 @@ def main():
                thissecs = int(lastPassPath[0])
                if args.verbose:
                   print "thissecs={}  diff={}".format(thissecs, (thissecs - refsecs))
-               print "thissecs={}  diff={}".format(thissecs, (thissecs - refsecs))
                if thissecs >= refsecs:
                   tdelsecs = cursecs - thissecs
                   #print "MERGING!!!"

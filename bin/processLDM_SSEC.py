@@ -53,16 +53,15 @@ def main():
        os.remove(filepath)
        raise SystemExit
 
-    # look for "SSEC" in file path to indicate compression is needed even tho ".gz" is missing
     if "SSEC" in filepath:
        # determine the filepath directory and base names
        dirnm = os.path.dirname(filepath)
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if "goesr_fog" in basenm:
+       if "goesr_fog" in basenm or "L2-TURBF-M6" in basenm:
           # OK, ready to move the file to the ingest directory
           if ".nc" in filepath:
-             print "Found GOES17 fog: {}".format(filepath)
+             print "Found SSEC GOES17 product: {}".format(filepath)
              # OK, ready to move the file to the ingest directory
              print "Moving {} to {}".format(filepath, ingestDir)
              try:
