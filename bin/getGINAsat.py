@@ -64,9 +64,14 @@ def _process_command_line():
         '-m', '--match', action='store', default='', help='match substring in filename')
     parser.add_argument(
         '-l', '--level', action='store', default='awips', choices=['awips',
-        'mirs_awips','mirs_scmi','scmi','sst_awips','nucaps_level2','clavrx_scmi', 'level2'], help='format type')
+        'mirs_awips','mirs_scmi','scmi','sst_awips','nucaps_level2','clavrx_scmi', 
+	'level2','mirs_level2','NucapsAwips'], help='format type')
     parser.add_argument(
         '-t', '--test', action='store_true', help='use test NRT data stream')
+    parser.add_argument(
+        '-ni', '--noingest', action='store_true', help='no AWIPS ingest, transfer file only')
+    parser.add_argument(
+        '-reg', '--regionalsat', action='store_true', help='file in old AWIPS format')
     parser.add_argument(
         '-f', '--qcfilter', action='store_true', help='turn on image qc filter')
     parser.add_argument(
@@ -85,7 +90,7 @@ def main():
 
    global sensor, verbose, testsrc
    ##++++++++++++++++  Configuration section +++++++++++++++++++++++## 
-   ingestDir = "/awips2/edex/data/manual"
+   ingestDir = "/data_store/dropbox"
    downloadDir = "/data_store/download"
    minPixelCount = 60000    # minimum number of pixels for image to be valid
    minPixelRange = 50       # minimum range of pixel values for valid image
@@ -97,6 +102,11 @@ def main():
    satellite = args.satellite  # specifies single satellite platform
    testsrc = args.test         # directs data requests to test NRT stream
    matchstr = args.match        # directs data requests to test NRT stream
+   if args.noingest:
+      doingest = 0
+   else:
+      doingest = 1
+   #
    if testsrc:
        datasrc = "nrt-test"
    else:
@@ -141,7 +151,8 @@ def main():
       parser.feed(htmlSource)
 
       # change working location to the download scratch directory
-      os.chdir(downloadDir)
+      if doingest:
+         os.chdir(downloadDir)
       # now parse the file name and retrieve the recent files 
       cnt = 0
       dcount = 0
@@ -171,13 +182,11 @@ def main():
             if verbose: 
                print "Basename = {}".format(basenm)
             # use base name to create a new name with "Alaska" prefix and ".nc" extension
-            if level == 'scmi' or level == 'clavrx_scmi' or level == 'mirs_scmi' or level == 'level2':
-               #newfilename="AKPOLAR_{}.nc".format(basenm)
-               newfilename=filename
-            elif level == 'nucaps_level2':
-               newfilename=basenm
-            else:
+            if args.regionalsat:
                newfilename="Alaska_{}.nc".format(basenm)
+               print "Adding prefix: {}".format(newfilename)
+            else:
+               newfilename=filename
 
             # now look for ".gz" in file name to determine if compression is needed
             if ".gz" in filename:
@@ -240,7 +249,7 @@ def main():
                   print "File already exists in Ingest Dir...removing: {}".format(filename)
                   os.remove(filename)
                   continue
-               else:
+               elif doingest:
                   # OK, ready to move the file to the ingest directory
                   print "Moving {} to {}".format(filename, ingestDir)
 	          try:
@@ -248,6 +257,8 @@ def main():
 	          except:
                      print "************  Unable to  move file to ingest: {}".format(filename)
                      continue
+               else:
+                  print "No ingest for {}".format(filename)
                ingcount += 1
                print "INGEST CNT = {}".format(ingcount) 
             #
