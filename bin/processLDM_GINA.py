@@ -32,7 +32,7 @@ def main():
     logpath="/opt/ldm/var/logs/edex-ingest-LDMsat-{}.log".format(curtime.strftime("%Y%m%d"))
     sys.stdout = sys.stderr = open(logpath, 'a+')
 
-    ingestDir = "/awips2/edex/data/manual"
+    ingestDir = "/data_store/dropbox"
 
     args = _process_command_line()
 
@@ -53,31 +53,23 @@ def main():
 
     filepath = args.filepath
     #print "Valid filepath: {}".format(filepath)
-
-    ################################################3
-    # To stop data flow to AWIPS, uncomment these lines 
-    #os.remove(filepath)
-    #raise SystemExit
     ################################################3
     #
-    # this section is only for support of remote file downloads (i.e. carl)
-    #if not os.path.exists(queueDir):
-    #   os.makedirs(queueDir)
-    #print "copying {} to {}".format(filepath, queueDir)
-    #copy(filepath,queueDir)
-
     # look for ".gz" in file path to indicate compression is needed
     if ".gz" in filepath:
        # determine the filepath directory and base names
        dirnm = os.path.dirname(filepath)
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
-       # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if ".nc" in basenm:
+       # compressed files use the directory and base to create a new name without "gz" extension
+       # Old regionalsat files require an "Alaska_" prefix
+       if "^UAF_AWIPS_" in basenm:
           newfilepath="{}/Alaska_{}".format(dirnm, basenm)
        else:
-          newfilepath="{}/Alaska_{}.nc".format(dirnm, basenm)
+          newfilepath="{}/{}".format(dirnm, basenm)
+         
        #
+       print "New filepath = {}".format(newfilepath)
        # open the compressed file and read out all the contents
        inF = gzip.GzipFile(filepath, 'rb')
        s = inF.read()
@@ -98,23 +90,16 @@ def main():
        # set the filepath to point to the uncompresses name
        filepath = newfilepath
        #
-       # Now the file is uncompressed and renamed with the "Alaska_" prefix. 
-       #############################################
-       # This section is for future tweaks that may be needed (like netcdf attributes).
-       # 
-       ##############################################
-       #
-       # OK, ready to move the file to the ingest directory
-       print "Moving {} to {}".format(filepath, ingestDir)
-       try:
-          move(filepath,ingestDir)
-       except:
-          print "Move to ingest failed. Removing: {}".format(filepath)
-          os.remove(filepath)
-       #
-    # a file with a UAF prefix and no ".gz" extension is unknown
     else:
-       print "Unrecognized file format: {}".format(filepath)
+       print "Uncompressed file: {}".format(filepath)
+    #
+    # OK, ready to move the file to the ingest directory
+    print "Moving {} to {}".format(filepath, ingestDir)
+    try:
+       move(filepath,ingestDir)
+    except:
+       print "Move to ingest failed. Removing: {}".format(filepath)
+       os.remove(filepath)
     #
     return
 
