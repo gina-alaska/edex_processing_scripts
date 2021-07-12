@@ -15,9 +15,9 @@ from pytz import timezone
 import h5py
 
 ################################################################################
-##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
+##  scmiMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  version: 1.0
+##  version: 1.01
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -270,7 +270,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 1.0')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 1.01')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -551,8 +551,10 @@ def main():
    ingestDir = "/data_store/dropbox" # source for data to mosaic
    dataStoreSbnDir = "/data_store/sat"  # NWS source for SCMI data to mosaic
    dataStoreManDir = "/data_store/manual/goesr"  # source for data to mosaic
+
    #######################################################################
    ##################  User Configuration Section ########################
+   #tmpDir = "/localapps/data/tmp" # temp storage for building mosaic until moved to ingest
    tmpDir = "/localapps/runtime/satellite/tmp" # tmp directory for building mosaic until moved to ingest
    tmpDir2 = "/data_store/download" # 2nd choice directory for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
@@ -565,22 +567,22 @@ def main():
    #  - possible sensors: viirs, modis, avhrr
    mosaicDict = {         # channel and sensors that are to used for the mosaic
     # "dnb" : ('viirs',),
-    # ".64" : ('viirs','modis','avhrr'),
+#     ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
       "3.7" : ('avhrr','modis','viirs'),
     # "6.7" : ('modis',),
       "11" : ('avhrr','modis','viirs'),
       "12" : ('avhrr','modis','viirs'),
-    #  "tpw": ('atms','amsu'),
-      "swe": ('atms','amsu'),
+      "tpw": ('atms','amsu'),
+    #  "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
-      "sfr": ('atms','amsu'),
+#      "sfr": ('atms','amsu'),
       "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
       "sst": ('viirs','modis','avhrr'),
-      "cldhgt": ('clavrx',),
+    #  "cldhgt": ('clavrx',),
     # "cldbase": ('clavrx',),
    }
    #
@@ -837,8 +839,8 @@ def main():
          mosaicDelPathname="{0}/UAF_AII_UAFGINA_mosaicdelta_{1}_Polar_{2}_{3}.nc".format(
                  tmpDir,mosaicChl,tileid,curddtt)
          if args.verbose:
-              print "New mosaic tile name: ",mosaicPathname
-              print "New mosaic time delta tile name: ",mosaicDelPathname
+         	print ("New mosaic tile name: ",mosaicPathname)
+         	print ("New mosaic time delta tile name: ",mosaicDelPathname)
 
          passcnt = 0
          moscnt = 0
@@ -895,10 +897,15 @@ def main():
 
             # save an existing tile path to use as a template if previous mosaics don't exist
             if templatePath == "":
-               templatePath = get_template_path(path, mosaicPixelResDict[xpixels], mosaicFilenmSrchDict[mosaicChl])
-               if len(templatePath) > 3:
-                  print "FOUND TEMPLATE: {}".format(templatePath)
-                   
+               for temppath in reversed(all_file_paths):
+                  if "UAF_AII" in temppath:
+                     templatePath = get_template_path(temppath, mosaicPixelResDict[xpixels], mosaicFilenmSrchDict[mosaicChl])
+                     if len(templatePath) > 3:
+                        print "FOUND TEMPLATE: {}".format(templatePath)
+                        break
+                     else:
+			continue
+ 
          # make sure there are passes to add... otherwise skip to next channel
          if passcnt > 0:
             print "Total passes for channel {} and tile {} = {}".format(mosaicChl, tileid, passcnt)
@@ -966,8 +973,13 @@ def main():
             if int(lastPassPath[0]) >= refsecs: 
                # Make a copy of the file selected as the starting container for
                # the mosaic with the new mosaic name 
-               copy(prevMosaicPath[2],mosaicPathname)
-               copy(prevMosDelPath[2],mosaicDelPathname)
+               	try:
+                   copy(prevMosaicPath[2],mosaicPathname)
+                   copy(prevMosDelPath[2],mosaicDelPathname)
+                except:
+                   print "Not found: {}".format(prevMosaicPath[2])
+                   print "Mosaic template file no longer exists...skipping"
+                   continue
             else:
                print "No recent passes and no recent mosaic data... skipping"
                continue
