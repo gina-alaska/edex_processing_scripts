@@ -27,13 +27,13 @@ lock() {
 #####
 eexit() {
     local error_str="$@"
-
     echo $error_str
     exit 1
 }
 #####
 main() {
-   echo "+++++ Starting Mosaic creation - `date` ++++++"
+   echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+   echo "++++++++++  Starting Mosaic Scripts - `date` ++++++++++++"
    lock $PROGNAME \
         || eexit "Only one instance of $PROGNAME can run at one time."
    #
@@ -48,14 +48,17 @@ main() {
 	echo 'EDEXingest is running :: pid '$edex_ingest_pid''
    fi
    #
-
+   echo ""
+   echo "<<<<<<< Creating new regionasat Mosaics - `date` >>>>>>>>"
+   /home/awips/bin/makeMosaic.py 
+   echo ""
+   echo "<<<<<<< Creating new SCMI Mosaics - `date` >>>>>>>>"
    /home/awips/bin/scmiMosaic.py 
 
    #
-   ddtt=`date +%Y%m%d`
-   echo "===== End Mosaic creation - `date` ======"
+   echo "=========== End Mosaic creation - `date` =============="
    #
 }
 main
-) >> /awips2/edex/logs/edex-ingest-lcltestmosaic-$ddtt".log" 2>&1
+) >> /awips2/edex/logs/edex-ingest-lclmosaic-$ddtt".log" 2>&1
 ##
