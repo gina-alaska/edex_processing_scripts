@@ -17,7 +17,7 @@ import h5py
 ################################################################################
 ##  scmiMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  version: 1.01
+##  version: 1.05
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -270,7 +270,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 1.01')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 1.05')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -404,7 +404,7 @@ def initTimeDelDestinationFile(destpath, chnlname, fileddtt, rundiff, xpos, ypos
       print 'ERROR. Tdel System access (initTD): {}'.format(destpath)
       return np.zeros(1) 
    #
-   print "Reading TimeDel file: {}".format(destpath)
+   print "Initializing TimeDel file: {}".format(destpath)
    dset = h5_fh['data']
    destval = dset.value
 
@@ -570,12 +570,12 @@ def main():
 #     ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
-      "3.7" : ('avhrr','modis','viirs'),
+    #  "3.7" : ('avhrr','modis','viirs'),
     # "6.7" : ('modis',),
       "11" : ('avhrr','modis','viirs'),
       "12" : ('avhrr','modis','viirs'),
       "tpw": ('atms','amsu'),
-    #  "swe": ('atms','amsu'),
+      "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
 #      "sfr": ('atms','amsu'),
@@ -810,13 +810,31 @@ def main():
       passOnlyFlag = True 
       print "Initialing only with pass data. Ignoring previous mosaics"
 
-   all_sbn_paths = []
-   all_man_paths = []
+   # scan data_store directory for source files
+   sbn_paths = []
+   man_paths = []
    all_file_paths = []
-   all_sbn_paths = get_filepaths(dataStoreSbnDir)
-   all_man_paths = get_filepaths(dataStoreManDir)
-   all_file_paths = all_sbn_paths + all_man_paths
-   #
+   currentSubDir = curtime.strftime("%Y%m%d/%H")
+   print "Checking current day/hour: {}".format(currentSubDir)
+   sbnDirPath = "{}/{}".format(dataStoreSbnDir,currentSubDir)
+   manDirPath = "{}/{}".format(dataStoreManDir,currentSubDir)
+   sbn_paths = get_filepaths(sbnDirPath)
+   man_paths = get_filepaths(manDirPath)
+   all_file_paths = all_file_paths + sbn_paths + man_paths
+   for i in range(1, backhrs):
+      del sbn_paths[:]
+      del man_paths[:]
+      prevtime  = curtime - timedelta(hours=i)
+      prevSubDir = prevtime.strftime("%Y%m%d/%H")
+      print "Checking previous day/hour: {}".format(prevSubDir)
+      sbnDirPath = "{}/{}".format(dataStoreSbnDir,prevSubDir)
+      manDirPath = "{}/{}".format(dataStoreManDir,prevSubDir)
+      sbn_paths = get_filepaths(sbnDirPath)
+      man_paths = get_filepaths(manDirPath)
+      all_file_paths = all_file_paths + sbn_paths + man_paths
+   print "Total number of file paths: {}".format(len(all_file_paths))
+
+   # next step through the dictionary an create mosaics for uncommented fields
    for key, value in mosaicDict.iteritems():
       mosaicSensors = value 
       mosaicChl = key
@@ -848,7 +866,11 @@ def main():
          saved_paths = []
          mosaic_paths = []
          mosaicdel_paths = []
-         ##############################333  
+         ################################# 
+         nowtime  = datetime.utcnow()
+         nowddtt = nowtime.strftime("%H:%M:%S")
+         print "### Reading file list for {}/{}. Time: {}".format(mosaicChl, tileid, nowddtt)
+         ################################# 
          for path in all_file_paths:
             ### skip certain product groups to avoid unneccary processing ####
             for ignorestr in fileIgnoreList:
@@ -995,7 +1017,6 @@ def main():
 
          if args.verbose:
             print "last file: {0} | Reference time: {1}".format(lastPassPath[0],refsecs)
-
          # Open destination file and redefine global attributes
          destval = initDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl], curfileddtt, xstart, ystart, initTileFlag)
          if np.size(destval) < 2:
@@ -1003,6 +1024,7 @@ def main():
             continue
          # Open tile delta destination file and redefine global attributes
          runtimediff = cursecs - int(prevMosDelPath[0])
+
          tdeldestval = initTimeDelDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl], curfileddtt, runtimediff, xstart, ystart)
          if np.size(tdeldestval) < 2:
             print "File problem. Skipping {}".format(mosaicDelPathname)
@@ -1019,6 +1041,10 @@ def main():
                if thissecs >= refsecs:
                   tdelsecs = cursecs - thissecs
                   #print "MERGING!!!"
+                  nowtime  = datetime.utcnow()
+                  nowddtt = nowtime.strftime("%H:%M:%S")
+                  print "### Bgn merge time: {}".format(nowddtt)
+
                   print "merge_data({},{},{})".format(lastPassPath[2],mosaicPathname, tdelsecs)
                   (destval,tdeldestval) = merge_data(destval,tdeldestval,lastPassPath[2],tdelsecs)
                   print "*****File Data Merged!!!!!!!"
