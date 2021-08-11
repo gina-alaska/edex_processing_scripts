@@ -35,7 +35,7 @@ main() {
    echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
    echo "++++++++++  Starting Mosaic Scripts - `date` ++++++++++++"
    lock $PROGNAME \
-        || eexit "Only one instance of $PROGNAME can run at one time."
+        || eexit "Not Started!! Only one instance of $PROGNAME can run at one time."
    #
    #
    # CHECK IF EDEX IS UP
@@ -53,7 +53,8 @@ main() {
    /home/awips/bin/makeMosaic.py 
    echo ""
    echo "<<<<<<< Creating new SCMI Mosaics - `date` >>>>>>>>"
-   /home/awips/bin/scmiMosaic.py 
+   #/home/awips/bin/scmiMosaic.py 
+   timeout 60m /home/awips/testscripts/mosaicdev/scmiMosaic.py 
 
    #
    echo "=========== End Mosaic creation - `date` =============="
