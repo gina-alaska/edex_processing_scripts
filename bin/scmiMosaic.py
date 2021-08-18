@@ -17,7 +17,7 @@ import h5py
 ################################################################################
 ##  scmiMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  version: 1.05
+##  version: 1.07
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -570,7 +570,7 @@ def main():
 #     ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
-    #  "3.7" : ('avhrr','modis','viirs'),
+      "3.7" : ('avhrr','modis','viirs'),
     # "6.7" : ('modis',),
       "11" : ('avhrr','modis','viirs'),
       "12" : ('avhrr','modis','viirs'),
@@ -623,7 +623,7 @@ def main():
      ".64" : ("_band1",),   # pixel res 1.0 km
      ".86" : ("_band2",),   # pixel res 1.0 km
      "1.6" : ("_band3a",),  # pixel res 1.0 km
-     "3.7" : ("_band3b",),  # pixel res 1.0 km
+     "3.7" : ("_band3b", "_bt20",),  # pixel res 1.0 km
      "6.7" : ("_bt27",),                # pixel res 1.0 km
      "11" :  ("_band4","_bt31"),   # pixel res 1.0 km
      "12" : ("_band5","_bt32"),    # pixel res 1.0 km
@@ -848,6 +848,15 @@ def main():
       scalefactor = initscale
       offset = initoffset
 
+      # save an existing tile path to use as template if there are no previous mosaics 
+      if templatePath == "":
+         for temppath in reversed(all_file_paths):
+            if "UAF_AII" in temppath:
+               templatePath = get_template_path(temppath, mosaicPixelResDict[xpixels], mosaicFilenmSrchDict[mosaicChl])
+               if len(templatePath) > 3:
+                  print "FOUND TEMPLATE: {}".format(templatePath)
+                  break
+ 
       for tileid, (xblk,yblk) in tileSliceDict.iteritems():
          xstart = xblk * xpixels
          ystart = yblk * ypixels 
@@ -917,17 +926,6 @@ def main():
                            saved_paths.append('{0}.{1}'.format(filesecs,path))
                            passcnt += 1
 
-            # save an existing tile path to use as a template if previous mosaics don't exist
-            if templatePath == "":
-               for temppath in reversed(all_file_paths):
-                  if "UAF_AII" in temppath:
-                     templatePath = get_template_path(temppath, mosaicPixelResDict[xpixels], mosaicFilenmSrchDict[mosaicChl])
-                     if len(templatePath) > 3:
-                        print "FOUND TEMPLATE: {}".format(templatePath)
-                        break
-                     else:
-			continue
- 
          # make sure there are passes to add... otherwise skip to next channel
          if passcnt > 0:
             print "Total passes for channel {} and tile {} = {}".format(mosaicChl, tileid, passcnt)
@@ -969,11 +967,12 @@ def main():
             if len(prevMosDelPath) < 1:
                prevMosDelPath = prevMosaicPath
          else:
-            # if no previous mosaic files were found use the saved template file with same tile pixel scale 
-            # to start the mosaic. Attributes will be changed and data loaded later on. This is needed because
-            # the AWIPS python version is too old to create a blank mosaic file correctly.
+            # if no previous mosaic files were found use the saved template file 
+            # with same tile pixel scale to start the mosaic. Attributes will be 
+            # changed and data loaded later on. This is needed because the AWIPS 
+            # python version is too old to create a blank mosaic file correctly.
             if len(templatePath) > 3:
-               #  this is for saving a file to use as a template when there are missing 
+               #  Use a saved file as a template when there are no previous 
                #  mosaic files to initialize with 
                print "Template path = {}".format(templatePath)
                prevMosaicPath = (backsecs, '.', templatePath)
