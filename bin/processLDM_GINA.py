@@ -61,13 +61,14 @@ def main():
        dirnm = os.path.dirname(filepath)
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
-       # compressed files use the directory and base to create a new name without "gz" extension
+       print "directory: {}".format(dirnm)
+       print "filename: {}".format(filenm)
+       print "basename: {}".format(basenm)
+
+       # compressed files use the directory and base to create a new name 
+       # without "gz" extension
        # Old regionalsat files require an "Alaska_" prefix
-       if "^UAF_AWIPS_" in basenm:
-          newfilepath="{}/Alaska_{}".format(dirnm, basenm)
-       else:
-          newfilepath="{}/{}".format(dirnm, basenm)
-         
+       newfilepath="{}/Alaska_{}".format(dirnm, basenm)
        #
        print "New filepath = {}".format(newfilepath)
        # open the compressed file and read out all the contents

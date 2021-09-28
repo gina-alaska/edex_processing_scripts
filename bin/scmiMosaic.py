@@ -578,7 +578,7 @@ def main():
       "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
-#      "sfr": ('atms','amsu'),
+      "sfr": ('atms','amsu'),
       "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
       "sst": ('viirs','modis','avhrr'),
