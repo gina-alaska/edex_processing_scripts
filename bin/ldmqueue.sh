@@ -5,5 +5,5 @@ then
    echo "Syntax: ldmqueue.sh match-pattern"
    exit
 fi
-pqcat -p "$1" -v /opt/ldm/var/queues/ldm.pq > /dev/null
+pqcat -p "$1" -vl - > /dev/null
 

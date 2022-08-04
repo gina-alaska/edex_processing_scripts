@@ -64,7 +64,8 @@ def main():
        filenm = os.path.basename(filepath)
        basenm = os.path.splitext(filenm)[0]
        #Only process GOES-17
-       if "G17" in filepath and "RadF" in filepath:
+       #if "G17" in filepath and "RadF" in filepath:
+       if "RadF" in filepath:
           channel = basenm[16:21]
           bgntime  = datetime.utcnow()
           print "Converting {} to Level 2: {}".format(channel, filepath)
