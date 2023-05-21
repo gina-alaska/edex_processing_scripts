@@ -47,14 +47,14 @@ def main():
        os.remove(oldlogpath) 
     ###################################
 
-    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
+    print ("------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath))
 
     if not os.path.exists(args.filepath):
-        print "File not found: {}".format(args.filepath)
+        print ("File not found: {}".format(args.filepath))
         raise SystemExit
     processFlag = 1
     filepath = args.filepath
-    #print "Valid filepath: {}".format(filepath)
+    #print ("Valid filepath: {}".format(filepath))
 
     # look GOES prefix in file path
     if "OR_ABI" in filepath:
@@ -68,55 +68,55 @@ def main():
        if "RadF" in filepath:
           channel = basenm[16:21]
           bgntime  = datetime.utcnow()
-          print "Converting {} to Level 2: {}".format(channel, filepath)
-          print "Start time: {}Z".format(bgntime.strftime("%Y%m%d %H%M"))
+          print ("Converting {} to Level 2: {}".format(channel, filepath))
+          print ("Start time: {}Z".format(bgntime.strftime("%Y%m%d %H%M")))
           #commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R ECONUS -S CONUS {}".format(filepath)
           commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R WCONUS -S CONUS {}".format(filepath)
           try:
              os.system(commandstr)
           except:
-             print "Conversion was unsuccessful"
+             print ("Conversion was unsuccessful")
           #
           # OK, ready to move the file to the ingest directory
           for thisfile in glob.glob('./OT_WCONUS*'):
              if not channel in thisfile:
-                 #print "No {} in {}".format(channel, thisfile)
+                 #print ("No {} in {}".format(channel, thisfile))
                  continue
              #if not os.path.exists(thisfile):
-             #   print "File does not exist: {}".format(thisfile)
+             #   print ("File does not exist: {}".format(thisfile))
              #   continue
              # OK, ready to instert the converted file to LDM
              thisfilename = thisfile[2:] 
-             print "Inserting {} in ldm queue ".format(thisfilename)
+             print ("Inserting {} in ldm queue ".format(thisfilename))
              commandstr = "pqinsert -q /opt/ldm/var/queues/ldm.pq -f EXP {}".format(thisfilename)
              # test if the insertion was successful
              try:
                 os.system(commandstr)
              except:
-                print "ldm queue insertion failed. Removing: {}".format(thisfilename)
+                print ("ldm queue insertion failed. Removing: {}".format(thisfilename))
              # Now remove the converted file
              level2path = "{}/{}".format(workingDir,thisfilename) 
-             print "Deleting: {}".format(level2path)
+             print ("Deleting: {}".format(level2path))
              try:
                 os.remove(level2path)
              except OSError as e: # name the Exception `e`
-                print "Failed with:", e.strerror # look what it says
+                print ("Failed with:", e.strerror) # look what it says
                 #print "Error code:", e.code 
              #except:
              #   print "Unable to remove: {}".format(level2path)
              #
     # a file without the OR_ABI prefix is unknown
     else:
-       print "Unknown filename: {}".format(filepath)
+       print ("Unknown filename: {}".format(filepath))
     
-    print "Removing: {}".format(filepath)
+    print ("Removing: {}".format(filepath))
     try:
        os.remove(filepath)
     except:
-       print "Unable to remove: {}".format(thisfilename)
+       print ("Unable to remove: {}".format(thisfilename))
     #
     endtime  = datetime.utcnow()
-    print "End time: {}Z".format(endtime.strftime("%Y%m%d %H%M"))
+    print ("End time: {}Z".format(endtime.strftime("%Y%m%d %H%M")))
     
     return
 

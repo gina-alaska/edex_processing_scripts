@@ -5,19 +5,18 @@ import os
 import numpy as np
 from numpy import int16
 from scipy import ndimage, misc
-import matplotlib.pyplot as plt
 from shutil import copy, move
 import argparse
 import datetime
 from time import strftime
 from datetime import datetime, timedelta
 from pytz import timezone
-import h5py
+import netCDF4
 
 ################################################################################
 ##  scmiMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  version: 1.07
+##  version: 2.00
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -98,7 +97,7 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching VIIRS: idx={}".format(idx)
+         print("Searching VIIRS: idx={}".format(idx))
          self.unknown_error()
 
    def parse_clavrx(self, fparts):
@@ -120,7 +119,7 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching CLAVRX: ndx={}".format(ndx)
+         print("Searching CLAVRX: ndx={}".format(ndx))
          self.unknown_error()
 
    def parse_MIRS(self, fparts, sattype):
@@ -140,7 +139,7 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching MIRS: idx={}".format(idx)
+         print("Searching MIRS: idx={}".format(idx))
          self.unknown_error()
 
    def parse_GAASP(self, fparts, sattype):
@@ -160,7 +159,7 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching GAASP: idx={}".format(idx)
+         print("Searching GAASP: idx={}".format(idx))
          self.unknown_error()
 
    def parse_modis(self, fparts):
@@ -182,7 +181,7 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching MODIS: idx={}".format(idx)
+         print("Searching MODIS: idx={}".format(idx))
          self.unknown_error()
 
    def parse_avhrr(self, fparts):
@@ -201,7 +200,7 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching AVHRR: idx={}".format(idx)
+         print("Searching AVHRR: idx={}".format(idx))
          self.unknown_error()
 
    def parse_mosaic(self, fparts):
@@ -219,19 +218,19 @@ class filePart(object):
       else:
          self.chnl = '0'
          self.stype = 'unknown'
-         print "Searching MOSAIC: idx={}".format(idx)
+         print("Searching MOSAIC: idx={}".format(idx))
          self.unknown_error()
 
    def date_error(self):
-         print self.fname
-         print self.stype
-         print "Invalid filedate: {}".format(self.fname)
+         print(self.fname)
+         print(self.stype)
+         print("Invalid filedate: {}".format(self.fname))
          self.dstr = "199901010000"
 
    def unknown_error(self):
-         print self.fname
-         print self.stype
-         print "Unknown file type: {}".format(self.fname)
+         print(self.fname)
+         print(self.stype)
+         print("Unknown file type: {}".format(self.fname))
          self.dstr = "199901010000"
    
    def filesecs(self):
@@ -270,7 +269,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 1.05')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 2.0 beta')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -321,7 +320,104 @@ def get_template_path(filepath, sensors, products):
     return ""
 
 #####################################################################
-def initDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
+def createDestinationFile(destpath, chnlname, dname, dunits, fileddtt, xpos, ypos, destval):
+   """ Initialize the destination netcdf file, change attributes, and 
+   return the data array """
+   #
+   global fillvalue
+   global scalefactor
+   global offset
+   global xpixels
+   global ypixels
+   global mosaicPixelResDict
+   #
+   try:
+      ncfh = netCDF4.Dataset(destpath, mode="w", clobber=True)
+      ncfh.set_auto_scale(False)
+   except IOError:
+      print('ERROR. Destination I/O access (init): {}'.format(destpath))
+      return np.zeros(1) 
+   except OSError:
+      print('ERROR. Destination System access (init): {}'.format(destpath))
+      return np.zeros(1) 
+   #
+   print("Creating destination file: {}".format(destpath))
+   xdim = ncfh.createDimension("x",xpixels)
+   ydim = ncfh.createDimension("y",ypixels)
+   dset = ncfh.createVariable('data','i2',('x','y'),fill_value=fillvalue)
+   xset = ncfh.createVariable('x','i2',('x'))
+   yset = ncfh.createVariable('y','i2',('y'))
+   projset = ncfh.createVariable('polar_projection','i4')
+
+   (xscale,xoff,yscale,yoff) = mosaicPixelResDict[xpixels] # x & Y scales and offsets
+   if xscale == 5000:
+      shortname = "polar_alaska_5km"
+   elif xscale == 1000:
+      shortname = "polar_alaska_1km"
+   else:
+      shortname = "polar_alaska_{}".format(xscale)
+   #
+   # write file attributes    
+   setattr(ncfh, 'Conventions', "CF-1.7")
+   setattr(ncfh, 'creator', "UAF-GINA")
+   setattr(ncfh, 'creation_time', fileddtt)
+   setattr(ncfh, 'product_tile_height',xpixels)
+   setattr(ncfh, 'product_tile_width',xpixels)
+   setattr(ncfh, 'number_product_tiles', 80)
+   setattr(ncfh, 'pixel_x_size',xscale/1000)
+   setattr(ncfh, 'pixel_y_size',xscale/1000)
+   setattr(ncfh, 'production_location', 'gina-uaf')
+   setattr(ncfh, 'start_date_time', fileddtt)
+   setattr(ncfh, 'satellite_id', "MOSAIC")
+   setattr(ncfh, 'sector_id', "Polar")
+   setattr(ncfh, 'physical_element', chnlname)
+   setattr(ncfh, 'product_name', chnlname)
+   setattr(ncfh, 'awips_id', "AWIPS_{}".format(chnlname))
+   setattr(ncfh, 'product_columns', xpixels * 8)
+   setattr(ncfh, 'product_rows', ypixels * 10)
+   setattr(ncfh, 'tile_column_offset', xpos)
+   setattr(ncfh, 'tile_row_offset', ypos)
+   #
+   setattr(dset, 'coordinates', 'y x')
+   setattr(dset, 'units', dunits)
+   setattr(dset, 'valid_min', 0)
+   setattr(dset, 'valid_max', 32766)
+   setattr(dset, 'standard_name', dname)
+   setattr(dset, 'grid_mapping', 'polar_projection')
+   dset[:,:] = destval
+   setattr(dset, 'scale_factor', scalefactor)
+   setattr(dset, 'add_offset', offset)
+   setattr(dset, 'number_product_80', 80)
+   #
+   setattr(yset, 'units', 'meters')
+   setattr(yset, 'standard_name', 'projection_y_coordinate')
+   yvals = np.arange(ypos, ypos+ypixels).astype(int16)
+   yset[:] = yvals
+   setattr(yset, 'scale_factor', yscale)
+   setattr(yset, 'add_offset', yoff)
+   #
+   setattr(xset, 'units', 'meters')
+   setattr(xset, 'standard_name', 'projection_x_coordinate')
+   xvals = np.arange(xpos, xpos+xpixels).astype(int16)
+   xset[:] = xvals
+   setattr(xset, 'scale_factor', xscale)
+   setattr(xset, 'add_offset', xoff)
+   #
+   setattr(projset, 'short_name', shortname)
+   setattr(projset, 'grid_mapping_name', 'polar_stereographic')
+   setattr(projset, 'standard_parallel', 60.)
+   setattr(projset, 'straight_vertical_longitude_from_pole', -150.)
+   setattr(projset, 'latitude_of_projection_origion', 90.)
+   setattr(projset, 'semi_major_axis', 6378137)
+   setattr(projset, 'semi_minor_axis', 6356752.31424518)
+   setattr(projset, 'false_easting', 0.)
+   setattr(projset, 'false_northin', 0.)
+   #
+   ncfh.close()
+   #
+   return
+#####################################################################
+def createTimeDelDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, destval):
    """ Initialize the destination netcdf file, change attributes, and 
    return the data array """
    #
@@ -331,119 +427,123 @@ def initDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, newFlag):
    global xpixels
    global ypixels
    #
-   if not os.path.exists(destpath):
-      print "ERROR. File to init destination not found: {}".format(destpath)
-      return np.zeros(1) 
    try:
-      h5_fh = h5py.File(destpath, "a")
+      ncfh = netCDF4.Dataset(destpath, mode="w", clobber=True)
+      ncfh.set_auto_scale(False)
    except IOError:
-      print 'ERROR. Destination I/O access (init): {}'.format(destpath)
+      print('ERROR. Destination I/O access (init): {}'.format(destpath))
       return np.zeros(1) 
    except OSError:
-      print 'ERROR. Destination System access (init): {}'.format(destpath)
+      print('ERROR. Destination System access (init): {}'.format(destpath))
       return np.zeros(1) 
    #
-   print "Initializing destination file: {}".format(destpath)
-   dset = h5_fh['data']
+   print("Creating time del destination file: {}".format(destpath))
+   elementname = bytes("{} TimeDelta".format(chnlname), encoding="utf-8")
+   xdim = ncfh.createDimension("x",xpixels)
+   ydim = ncfh.createDimension("y",ypixels)
+   dset = ncfh.createVariable('data','i2',('x','y'),fill_value=fillvalue)
+   xset = ncfh.createVariable('x','i2',('x'))
+   yset = ncfh.createVariable('y','i2',('y'))
+   projset = ncfh.createVariable('polar_projection','i4')
 
-   # read dataset attributes
-   fillvalue = dset.attrs['_FillValue']
-   #scalefactor = dset.attrs['scale_factor']
-   #offset = dset.attrs['add_offset']
-   dset.attrs['scale_factor'] = scalefactor
-   dset.attrs['add_offset'] = offset
-
-   # update file attributes    
-   destval = dset.value
-   h5_fh.attrs['start_date_time'] = fileddtt
-   #
-   file_xpixels = h5_fh.attrs['product_tile_width']
-   file_ypixels = h5_fh.attrs['product_tile_height']
-   satid = h5_fh.attrs['satellite_id']
-   if newFlag or satid != "MOSAIC":
-      print "Not a MOSAIC file type. Updating attributes."
-      h5_fh.attrs['satellite_id'] = "MOSAIC"
-      h5_fh.attrs['sector_id'] = "Polar"
-      h5_fh.attrs['physical_element'] = chnlname
-      h5_fh.attrs['product_name'] = chnlname
-      h5_fh.attrs['awips_id'] = "AWIPS_{}".format(chnlname)
-      h5_fh.attrs['product_columns'] = xpixels * 8
-      h5_fh.attrs['product_rows'] = ypixels * 10 
-      h5_fh.attrs['tile_column_offset'] = xpos 
-      h5_fh.attrs['tile_row_offset'] = ypos 
-    #  destval.fill(np.asscalar(fillvalue))
-      yvals = np.arange(ypos, ypos+ypixels).astype(int16)
-      xvals = np.arange(xpos, xpos+xpixels).astype(int16)
-      xset = h5_fh['x']
-      xset[...] = xvals
-      yset = h5_fh['y']
-      yset[...] = yvals
-      #destval = numpy.where(destval != fillvalue, fillvalue, destval)
-   #
-   h5_fh.close()
-
-   return destval
-#####################################################################
-def initTimeDelDestinationFile(destpath, chnlname, fileddtt, rundiff, xpos, ypos):
-   """ Initialize the time delta destination netcdf file, change attributes, and 
-   return the time delta array """
-   #
-   global fillvalue
-   global xpixels
-   global ypixels
-   #
-   if not os.path.exists(destpath):
-      print "ERROR. File for tdel init not found: {}".format(destpath)
-      return np.zeros(1) 
-   try:
-      h5_fh = h5py.File(destpath, "a")
-   except IOError:
-      print 'ERROR. Tdel I/O access (initTD) : {}'.format(destpath)
-      return np.zeros(1) 
-   except OSError:
-      print 'ERROR. Tdel System access (initTD): {}'.format(destpath)
-      return np.zeros(1) 
-   #
-   print "Initializing TimeDel file: {}".format(destpath)
-   dset = h5_fh['data']
-   destval = dset.value
-
-   elementname = "{} TimeDelta".format(chnlname)
-   thiselement = h5_fh.attrs['physical_element']
-   if thiselement == elementname:
-      print "Updating previous MOSAIC timedelta file. Run diff = {}".format(rundiff)
-      # time values are divided by 10 because the file has a scale value of 10
-      rundiff /= 10
-      destval = np.where(destval != fillvalue, destval+rundiff, destval)
+   (xscale,xoff,yscale,yoff) = mosaicPixelResDict[xpixels] # x & Y scales and offsets
+   if xscale == 5000:
+      shortname = "polar_alaska_5km"
+   elif xscale == 1000:
+      shortname = "polar_alaska_1km"
    else:
-      print "Not a MOSAIC timedelta file type. Updating attributes."
-      ### Need to creat a new TIMEDEL Dataset
-      dset.attrs['add_offset'] = 0
-      dset.attrs['scale_factor'] = 10
-      dset.attrs['units'] = 'sec'
-      dset.attrs['standard_name'] = 'time delta'
-      dset.attrs['number_product_80'] = 80 
-      #$destval = numpy.where(destval != fillvalue, fillvalue, destval)
-      destval.fill(np.asscalar(fillvalue))
-      # update file attributes    
-      h5_fh.attrs['satellite_id'] = "MOSAIC"
-      h5_fh.attrs['sector_id'] = "Polar"
-      h5_fh.attrs['physical_element'] = elementname
-      h5_fh.attrs['product_columns'] = xpos 
-      h5_fh.attrs['product_rows'] = ypos 
-      h5_fh.attrs['tile_column_offset'] = xpos 
-      h5_fh.attrs['tile_row_offset'] = ypos 
-      yvals = np.arange(ypos, ypos+ypixels).astype(int16)
-      xvals = np.arange(xpos, xpos+xpixels).astype(int16)
-      xset = h5_fh['x']
-      xset[...] = xvals
-      yset = h5_fh['y']
-      yset[...] = yvals
-   
-   h5_fh.attrs['start_date_time'] = fileddtt
-   h5_fh.close()
+      shortname = "polar_alaska_{}".format(xscale)
+   # write file attributes    
+   setattr(ncfh, 'Conventions', "CF-1.7")
+   setattr(ncfh, 'creator', "UAF-GINA")
+   setattr(ncfh, 'creation_time', fileddtt)
+   setattr(ncfh, 'product_tile_height',xpixels)
+   setattr(ncfh, 'product_tile_width',xpixels)
+   setattr(ncfh, 'number_product_tiles', 80)
+   setattr(ncfh, 'pixel_x_size',xscale/1000)
+   setattr(ncfh, 'pixel_y_size',xscale/1000)
+   setattr(ncfh, 'production_location', 'gina-uaf')
+   setattr(ncfh, 'start_date_time', fileddtt)
+   setattr(ncfh, 'satellite_id', "MOSAIC")
+   setattr(ncfh, 'sector_id', "Polar")
+   setattr(ncfh, 'physical_element', "{} TimeDelta".format(chnlname))
+   setattr(ncfh, 'product_name', chnlname)
+   setattr(ncfh, 'awips_id', "AWIPS_{}".format(chnlname))
+   setattr(ncfh, 'product_columns', xpixels * 8)
+   setattr(ncfh, 'product_rows', ypixels * 10)
+   setattr(ncfh, 'tile_column_offset', xpos)
+   setattr(ncfh, 'tile_row_offset', ypos)
+   #
+   setattr(dset, 'standard_name', 'time delta')
+   setattr(dset, 'coordinates', 'y x')
+   setattr(dset, 'units', 'sec')
+   setattr(dset, 'valid_min', 0)
+   setattr(dset, 'valid_max', 32766)
+   setattr(dset, 'grid_mapping', 'polar_projection')
+   dset[:,:] = destval
+   setattr(dset, 'add_offset', 0)
+   setattr(dset, 'scale_factor', 10)
+   setattr(dset, 'number_product_80', 80)
+   #
+   setattr(yset, 'units', 'meters')
+   setattr(yset, 'standard_name', 'projection_y_coordinate')
+   yvals = np.arange(ypos, ypos+ypixels).astype(int16)
+   yset[:] = yvals
+   setattr(yset, 'scale_factor', yscale)
+   setattr(yset, 'add_offset', yoff)
+   #
+   setattr(xset, 'units', 'meters')
+   setattr(xset, 'standard_name', 'projection_x_coordinate')
+   xvals = np.arange(xpos, xpos+xpixels).astype(int16)
+   xset[:] = xvals
+   setattr(xset, 'scale_factor', xscale)
+   setattr(xset, 'add_offset', xoff)
+   #
+   setattr(projset, 'short_name', shortname)
+   setattr(projset, 'grid_mapping_name', 'polar_stereographic')
+   setattr(projset, 'standard_parallel', 60.)
+   setattr(projset, 'straight_vertical_longitude_from_pole', -150.)
+   setattr(projset, 'latitude_of_projection_origion', 90.)
+   setattr(projset, 'semi_major_axis', 6378137)
+   setattr(projset, 'semi_minor_axis', 6356752.31424518)
+   setattr(projset, 'false_easting', 0.)
+   setattr(projset, 'false_northin', 0.)
+   #
+   ncfh.close()
 
-   return destval
+   #
+   return
+
+#####################################################################
+def readMosaicFile(srcpath, updateScaleFlag):
+   """ Read the data section of a previous mosaic """
+
+   global scalefactor
+   global offset
+
+   if not os.path.exists(srcpath):
+      print("ERROR. File to init destination not found: {}".format(destpath))
+      return np.zeros(1) 
+   try:
+      ncfh = netCDF4.Dataset(srcpath, mode="r", clobber=True)
+      ncfh.set_auto_scale(False)
+   except IOError:
+      print('ERROR. Destination I/O access (init): {}'.format(destpath))
+      return np.zeros(1) 
+   except OSError:
+      print('ERROR. Destination System access (init): {}'.format(destpath))
+      return np.zeros(1) 
+   #
+   dsrc = ncfh.variables['data']
+   srcval = dsrc[:,:]
+   #print ("**** READING {} ****".format(srcpath))
+   #print (srcval[0:80, 0:25])
+   #srcval = (srcval * scalefactor) + offset
+   if updateScaleFlag:
+      scalefactor = getattr(dsrc, 'scale_factor')
+      offset = getattr(dsrc, 'add_offset')
+
+   return srcval
 
 #####################################################################
 def merge_data(destval, destdelval, srcpath, ageval):
@@ -458,60 +558,59 @@ def merge_data(destval, destdelval, srcpath, ageval):
    global ageLimit
 #
    if not os.path.exists(srcpath):
-      print "ERROR: Source file to merge not found: {}".format(srcpath)
+      print("ERROR: Source file to merge not found: {}".format(srcpath))
       return (destval, destdelval)
    try:
-      fh_src = h5py.File(srcpath, "r")
+      ncfh_src = netCDF4.Dataset(srcpath, "r")
+      ncfh_src.set_auto_scale(False)
    except IOError:
-      print 'ERROR. I/O access of source to merge: {}'.format(srcpath)
+      print('ERROR. I/O access of source to merge: {}'.format(srcpath))
       return (destval, destdelval)
    except OSError:
-      print 'ERROR. System access of source to merge: {}'.format(srcpath)
+      print('ERROR. System access of source to merge: {}'.format(srcpath))
       return (destval, destdelval)
    #
    #
-   print "Overlaying Data: {}".format(srcpath)
-   dsrc = fh_src['data']
-   srcval = dsrc.value
-   srcscale = dsrc.attrs['scale_factor']
-   srcoff = dsrc.attrs['add_offset']
+   print("Overlaying Data: {}".format(srcpath))
+   #dsrc = ncfh_src.variables['data'][:]
+   dsrc = ncfh_src.variables['data']
+   srcval = dsrc[:,:]
+   srcscale = getattr(dsrc, 'scale_factor')
+   srcoff = getattr(dsrc, 'add_offset')
    # now compare the number of pixels in this file and resize if necessary
    (xpix,ypix) = srcval.shape
-   print "This array: {} x {} shape={}   ref array {} x {}".format(xpix, ypix, srcval.shape, xpixels, ypixels)
+   #print("This array: {} x {} shape={}   ref array {} x {}".format(xpix, ypix, srcval.shape, xpixels, ypixels))
    if xpix != xpixels:
       a = float(xpixels)
       b = float(xpix)
       zoomscale = a / b
-      print "********  ZOOMSCALE = {}".format(zoomscale)
-      #if xpix == 2333:
-      #   zoomscale = .30004
-      #elif xpix == 1000:
-      #   zoomscale = .7
-      #else:
-      #   print "Unknown grid size {}- skipping".format(xpix)
-      #   return (destval, destdelval)
-      print "Grid axis = {}. Rescaling by factor of {}".format(xpix, zoomscale)
+      print("********  ZOOMSCALE = {}".format(zoomscale))
+      print("Grid axis = {}. Rescaling by factor of {}".format(xpix, zoomscale))
       newval = ndimage.zoom(srcval, zoomscale, mode='nearest')
       srcval = newval
       (xpix,ypix) = srcval.shape
-      print "Rescaled array: {} x {}".format(xpix, ypix)
+      print("Rescaled array: {} x {}".format(xpix, ypix))
    #
+   srcval = srcval.astype(int16)
    # convert destval to fit destination scale and offset
    destvalf = destval.astype(float)
+   srcvalf = srcval.astype(float)
    cvtscale = srcscale / scalefactor
    cvtoff = (srcoff - offset) / scalefactor
-   destvalf = np.where(srcval != fillvalue, (srcval*cvtscale)+cvtoff, destvalf)
+   destvalf = np.where(srcval < fillvalue, (srcvalf*cvtscale)+cvtoff, destvalf)
    destval = destvalf.astype(int16)
    # now merge in the new time delta values
-   # age vilues are divided by 10 because file is assigned a scale of 10
-   ageval /= 10
-   destdelval = np.where(srcval != fillvalue, ageval, destdelval)
+   # age values are divided by 10 because file is assigned a scale of 10
+   destdelval = destdelval.astype(int16)
+   ageval = int(ageval / 10)
+   destdelval = np.where(srcval < fillvalue, ageval, destdelval)
    # age out older pass data
-   destdelval = np.where(destdelval > ageLimit / 10, fillvalue,  destdelval)
+   maxdelta = ageLimit / 10
+   destdelval = np.where(np.logical_and(destdelval < fillvalue, destdelval > maxdelta), fillvalue,  destdelval)
    # remove pass data where pixels were aged out
-   destval = np.where(destdelval == fillvalue, fillvalue, destval)
+   destval = np.where(destdelval < fillvalue, destval, fillvalue)
    #
-   fh_src.close()
+   ncfh_src.close()
    return (destval, destdelval)
 
 #####################################################################
@@ -520,21 +619,23 @@ def lastdelta(destpath):
    global fillvalue
    #
    if not os.path.exists(destpath):
-      print "ERROR. Destination file not found (lastdel): {}".format(destpath)
+      print("ERROR. Destination file not found (lastdel): {}".format(destpath))
       return 0 
    try:
-      h5_fh = h5py.File(destpath, "a")
+      ncfh = netCDF4.Dataset(destpath, "r+", clobber=True)
+      ncfh.set_auto_scale(False)
    except IOError:
-      print 'ERROR. Destination I/O access (lastdel) {}'.format(destpath)
+      print('ERROR. Destination I/O access (lastdel) {}'.format(destpath))
       return 0
    except OSError:
-      print 'ERROR. Destination System access (lastdel) {}'.format(destpath)
+      print('ERROR. Destination System access (lastdel) {}'.format(destpath))
       return 0
    #
-   dset = h5_fh['data']
-   fillvalue = dset.attrs['_FillValue']
-   delval = dset.value
-   h5_fh.close()
+   #dset = ncfh.variables['data'][:]
+   dset = ncfh.variables['data']
+   fillvalue = getattr(dset, '_FillValue')
+   delval = dset[:,:]
+   ncfh.close()
    #
    pixcnt = np.sum(delval != fillvalue)
    if pixcnt > 0:
@@ -554,9 +655,10 @@ def main():
 
    #######################################################################
    ##################  User Configuration Section ########################
-   #tmpDir = "/localapps/data/tmp" # temp storage for building mosaic until moved to ingest
-   tmpDir = "/localapps/runtime/satellite/tmp" # tmp directory for building mosaic until moved to ingest
+   tmpDir = "/localapps/data/tmp" # temp storage for building mosaic until moved to ingest
+   #tmpDir = "/localapps/runtime/satellite/tmp" # tmp directory for building mosaic until moved to ingest
    tmpDir2 = "/data_store/download" # 2nd choice directory for building mosaic until moved to ingest
+   #tmpDir2 = "." # 2nd choice directory for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
    #### NOTE: mosaicDict determines what sensor composites to generate. 
    #          Only uncomment the mosaics that are wanted.
@@ -567,7 +669,7 @@ def main():
    #  - possible sensors: viirs, modis, avhrr
    mosaicDict = {         # channel and sensors that are to used for the mosaic
     # "dnb" : ('viirs',),
-#     ".64" : ('viirs','modis','avhrr'),
+    #  ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
       "3.7" : ('avhrr','modis','viirs'),
@@ -607,7 +709,7 @@ def main():
    #################  End User Configuration Section #####################
    #######################################################################
 
-   mosaicPixelResDict = {
+   mosaicPixelNumDict = {
      2800: ("modis",),
      2300: ("viirs",),
      1400: ("viirs", "modis",),
@@ -615,27 +717,37 @@ def main():
      700 : ("avhrr", "modis","clavrx"),
      140 : ("atms","amsu"),
    }
+
+   global mosaicPixelResDict
+   mosaicPixelResDict = {
+     2800: (250,-3232391.87024928,-250,418860.86882731),
+     2300: (300,-3232351.03561558,-300,418701.32364195),
+     1400: (500,-3232529.18369167,-500,418698.331416102),
+     1000: (700,-3232223.55583311,-700,418315.142401981),
+     700 : (1000,-3232320.13721668,-1000,418080.974107473),
+     140 : (5000,-3234602.34800258,-5000,414365.348002585),
+   }
    #  this is a dictionary of filename patterns used to search for a 
    #  template to use as a container for building the mosaic. The content
    #  doesn't matter except the data array should be similar
-   mosaicFilenmSrchDict = {
-     "dnb" : ("_dynamic_dnb",),   # pixel res 0.7 km
-     ".64" : ("_band1",),   # pixel res 1.0 km
-     ".86" : ("_band2",),   # pixel res 1.0 km
-     "1.6" : ("_band3a",),  # pixel res 1.0 km
-     "3.7" : ("_band3b", "_bt20",),  # pixel res 1.0 km
-     "6.7" : ("_bt27",),                # pixel res 1.0 km
-     "11" :  ("_band4","_bt31"),   # pixel res 1.0 km
-     "12" : ("_band5","_bt32"),    # pixel res 1.0 km
-     "tpw": ("_tpw",),   # pixel res 5.0 km
-     "swe": ("_swe",),   # pixel res 5.0 km
-     "clw": ("_clw",),        # pixel res 5.0 km
-     "rainrate": ("atms_rain","amsua-mhs_rain"),   # pixel res 5.0 km
-     "sfr": ("_sfr",),         # pixel res 5.0 km
-     "seaice": ("_sea_ice",),  # pixel res 5.0 km
-     "sst": ("viirs_sst","modis_sst"),       # pixel res 0.7 km
-     "cldhgt": ("_cld_height_acha",),  # pixel res 0.7 km
-     "cldbase": ("_cld_height_base",),  # pixel res 0.7 km
+   mosaicDataAttributes = {
+     "dnb" : ("equalized_radiance","*1"),   # pixel res 0.7 km
+     ".64" : ("toa_bidirectional_reflectance","*1"),   # pixel res 1.0 km
+     ".86" : ("toa_bidirectional_reflectance","*1"),   # pixel res 1.0 km
+     "1.6" : ("toa_bidirectional_reflectance","*1"),   # pixel res 1.0 km
+     "3.7" : ("brightness_temperature", "kelvin"),  # pixel res 1.0 km
+     "6.7" : ("brightness_temperature", "kelvin"),  # pixel res 1.0 km
+     "11" : ("brightness_temperature", "kelvin"),  # pixel res 1.0 km
+     "12" : ("brightness_temperature", "kelvin"),  # pixel res 1.0 km
+     "tpw": ("total_precipitable_water","mm"),   # pixel res 5.0 km
+     "swe": ("snow_water_equivalence","cm"),   # pixel res 5.0 km
+     "clw": ("cloud_liquid_water","mm"),        # pixel res 5.0 km
+     "rainrate": ("rain_rate","mm/hr"),   # pixel res 5.0 km
+     "sfr": ("snow_fall_rate","mm/hr",),         # pixel res 5.0 km
+     "seaice": ("sea_ice","%"),  # pixel res 5.0 km
+     "sst": ("sea_surface_skin_temperature","kelvin"),       # pixel res 0.7 km
+     "cldhgt": ("height_at_cloud_top","m"),  # pixel res 0.7 km
+     "cldbase": ("base_height_of_cloud","m"),  # pixel res 0.7 km
    }
    mosaicLabelDict = {       # element names that are assigned to the mosaic
      "dnb" : "dnb",
@@ -678,8 +790,8 @@ def main():
    }
 
    # this list helps to avoid unnecessary processing 
-   fileIgnoreList = ["crefl", "viirs_cloud", "viirs_rain", "cld_temp", "cld_reff", "cld_opd", "cld_emiss", 
-                     "hncc_dnb", "adaptive_dnb", "OT_WCONUS"]
+   fileIgnoreList = ["crefl", "viirs_cloud", "viirs_rain", "cld_temp", "cld_reff", 
+     "cld_opd", "cld_emiss", "hncc_dnb", "adaptive_dnb", "OT_WCONUS"]
 
    tileSliceDict = {     # max time (hrs) for passes used in composites for each channel
       "TA01": (0,0),
@@ -763,8 +875,9 @@ def main():
       "TT03": (6,9),
       "TT04": (7,9),
    }
+   
 
-   #################  End configuration ##############################
+ #################  End configuration ##############################
    #
    global fillvalue
    global scalefactor
@@ -775,23 +888,24 @@ def main():
    global gridsize
 
    if os.path.isdir(tmpDir):
-      print "Tmp directory for building mosaic: {}".format(tmpDir)
+      print("Tmp directory for building mosaic: {}".format(tmpDir))
    elif os.path.isdir(tmpDir2):
       tmpDir = tmpDir2
-      print "Tmp directory for building mosaic: {}".format(tmpDir)
+      print("Tmp directory for building mosaic: {}".format(tmpDir))
    else:
       tmpDir = "/tmp"
-      print "Tmp directory for building mosaic: {}".format(tmpDir)
+      print("Tmp directory for building mosaic: {}".format(tmpDir))
 
    agelimit = 12           # default age limit if not specified in timeDeltaDict
    xpixels = 700 
    ypixels = 700 
    gridsize = 1
+   fillvalue = 32767
    args = _process_command_line(backhrs)
    if args.backhrs != backhrs:
       backhrs = args.backhrs
       if args.verbose:
-         print "Mosaic time delta redefined: {} hrs".format(args.backhrs)
+         print("Mosaic time delta redefined: {} hrs".format(args.backhrs))
 
    curtime  = datetime.utcnow()
    backtime  = datetime.utcnow() - timedelta(hours=backhrs)
@@ -801,21 +915,21 @@ def main():
    curddtt = curtime.strftime("%Y%m%d_%H%M")
    curfileddtt = curtime.strftime("%Y-%m-%dT%H:%M:%S")
    if args.verbose:
-      print 'Current time: {0} / secs: {1}'.format(curtime,cursecs)
-      print 'Mosaic start time - minus {0} hrs: {1} / secs: {2}'.format(
-           backhrs,backtime,backsecs)
+      print('Current time: {0} / secs: {1}'.format(curtime,cursecs))
+      print('Mosaic start time - minus {0} hrs: {1} / secs: {2}'.format(
+           backhrs,backtime,backsecs))
 
    passOnlyFlag = False
    if args.passonly == True or args.initialize == True:
       passOnlyFlag = True 
-      print "Initialing only with pass data. Ignoring previous mosaics"
+      print("Initialing only with pass data. Ignoring previous mosaics")
 
    # scan data_store directory for source files
    sbn_paths = []
    man_paths = []
    all_file_paths = []
    currentSubDir = curtime.strftime("%Y%m%d/%H")
-   print "Checking current day/hour: {}".format(currentSubDir)
+   print("Checking current day/hour: {}".format(currentSubDir))
    sbnDirPath = "{}/{}".format(dataStoreSbnDir,currentSubDir)
    manDirPath = "{}/{}".format(dataStoreManDir,currentSubDir)
    sbn_paths = get_filepaths(sbnDirPath)
@@ -826,48 +940,43 @@ def main():
       del man_paths[:]
       prevtime  = curtime - timedelta(hours=i)
       prevSubDir = prevtime.strftime("%Y%m%d/%H")
-      print "Checking previous day/hour: {}".format(prevSubDir)
+      print("Checking previous day/hour: {}".format(prevSubDir))
       sbnDirPath = "{}/{}".format(dataStoreSbnDir,prevSubDir)
       manDirPath = "{}/{}".format(dataStoreManDir,prevSubDir)
       sbn_paths = get_filepaths(sbnDirPath)
       man_paths = get_filepaths(manDirPath)
       all_file_paths = all_file_paths + sbn_paths + man_paths
-   print "Total number of file paths: {}".format(len(all_file_paths))
+   print("Total number of file paths: {}".format(len(all_file_paths)))
 
    # next step through the dictionary an create mosaics for uncommented fields
-   for key, value in mosaicDict.iteritems():
+   for key, value in mosaicDict.items():
       mosaicSensors = value 
       mosaicChl = key
       templatePath = ""
-      #
-      (xpixels,initscale,initoffset) = mosaicTileInitDict[mosaicChl]  # basic tile definitions of the mosaic
+      # get definitions and attributes for this channel 
+      (xpixels,initscale,initoffset) = mosaicTileInitDict[mosaicChl]  # mosaic tile defs 
+      (dataname, dataunits) = mosaicDataAttributes[mosaicChl]  # mosaic data attributes
       ypixels = xpixels
       ageLimit = timeDeltaDict[mosaicChl] * 3600  # hrs converted to secs
-      print 'Mosaic channel: {} using: {} Max age: {}  pixels: {}'.format(mosaicChl, mosaicSensors, ageLimit, xpixels) 
-      print 'Tile defaults xpix: {} scalefactor: {} offset: {}'.format(xpixels, initscale, initoffset) 
+      print("******************* Mosaic Channel: {} ******************".format(mosaicChl))
+      print("*** Sensors: {} Age: {}  pixels: {}".format(mosaicSensors, ageLimit, xpixels)) 
+      if args.verbose:
+         print('*** Tile defaults xpix: {} scalefactor: {} offset: {}'.format(xpixels, initscale, initoffset)) 
       scalefactor = initscale
       offset = initoffset
 
-      # save an existing tile path to use as template if there are no previous mosaics 
-      if templatePath == "":
-         for temppath in reversed(all_file_paths):
-            if "UAF_AII" in temppath:
-               templatePath = get_template_path(temppath, mosaicPixelResDict[xpixels], mosaicFilenmSrchDict[mosaicChl])
-               if len(templatePath) > 3:
-                  print "FOUND TEMPLATE: {}".format(templatePath)
-                  break
- 
-      for tileid, (xblk,yblk) in tileSliceDict.iteritems():
+      for tileid, (xblk,yblk) in tileSliceDict.items():
          xstart = xblk * xpixels
          ystart = yblk * ypixels 
-         print "tile={}  xstart={}  ystart={}".format(tileid, xstart, ystart)
+         print("   ########## Tile ID: {} ##########".format(tileid))
+         print("   ### xstart={}  ystart={}".format(tileid, xstart, ystart))
          mosaicPathname="{0}/UAF_AII_UAFGINA_mosaic_{1}_Polar_{2}_{3}.nc".format(
                  tmpDir,mosaicChl,tileid,curddtt)
          mosaicDelPathname="{0}/UAF_AII_UAFGINA_mosaicdelta_{1}_Polar_{2}_{3}.nc".format(
                  tmpDir,mosaicChl,tileid,curddtt)
          if args.verbose:
-         	print ("New mosaic tile name: ",mosaicPathname)
-         	print ("New mosaic time delta tile name: ",mosaicDelPathname)
+         	print(("New mosaic tile name: ",mosaicPathname))
+         	print(("New mosaic time delta tile name: ",mosaicDelPathname))
 
          passcnt = 0
          moscnt = 0
@@ -878,7 +987,7 @@ def main():
          ################################# 
          nowtime  = datetime.utcnow()
          nowddtt = nowtime.strftime("%H:%M:%S")
-         print "### Reading file list for {}/{}. Time: {}".format(mosaicChl, tileid, nowddtt)
+         print("### Reading file list for {}/{}. Time: {}".format(mosaicChl, tileid, nowddtt))
          ################################# 
          for path in all_file_paths:
             ### skip certain product groups to avoid unneccary processing ####
@@ -890,14 +999,14 @@ def main():
             # check for zero length files
             if not os.path.exists(path) or os.stat(path).st_size == 0:
                if args.verbose:
-                  print "Zero length file: {}".format(path)
+                  print("Zero length file: {}".format(path))
                continue
 
             if tileid in path:
 
                dirpath,dstorefile = os.path.split(path)
                # anything else should be good for composite
-               if "UAF_AII" in dstorefile:
+               if "UAF_AII" in dstorefile or "ARH_AII" in dstorefile:
                   thisfile = filePart(dstorefile)
                   fname = thisfile.parse_name()
 
@@ -910,125 +1019,109 @@ def main():
                      #print "channel={} tile={}  mosaicchl={}".format(thisfile.channel(),thisfile.tile(), mosaicChl)
                      #print "FOUND: {} filesecs={} timedif={}".format(thisfile.channel(), filesecs, filesecs - backsecs)
                      if filesecs > backsecs: 
-                        if thisfile.sensor() == "mosaic" and passOnlyFlag == False:
+                        #if thisfile.sensor() == "mosaic" and passOnlyFlag == False:
+                        if thisfile.sensor() == "mosaic":
                            if args.verbose:
-                              print "MOSAIC"
+                              print("MOSAIC")
                            mosaic_paths.append('{0}.{1}'.format(filesecs,path))
                            moscnt += 1
                         elif thisfile.sensor() == "mosaicdelta":
                            if args.verbose:
-                              print "MOSAICDELTA"
+                              print("MOSAICDELTA")
                            mosaicdel_paths.append('{0}.{1}'.format(filesecs,path))
                            mosdelcnt += 1
                         elif thisfile.sensor() in mosaicSensors:
                            if args.verbose:
-                              print "SENSOR DATA"
+                              print("SENSOR DATA")
                            saved_paths.append('{0}.{1}'.format(filesecs,path))
                            passcnt += 1
 
-         # make sure there are passes to add... otherwise skip to next channel
+         # check if there are passes or a recent mosaic...otherwise skip to next channel
          if passcnt > 0:
-            print "Total passes for channel {} and tile {} = {}".format(mosaicChl, tileid, passcnt)
+            print("Total passes for channel {} and tile {} = {}".format(mosaicChl, tileid, passcnt))
          elif moscnt > 0:
-            print "No recent passes but previous mosaic for channel {} and tile {}".format(mosaicChl, tileid)
+            print("No recent passes but previous mosaic for channel {} and tile {}".format(mosaicChl, tileid))
          else:
-            print "No recent passes found for channel {} and tile {} - skipping".format(mosaicChl, tileid)
+            print("No recent passes or mosaics for channel {} and tile {} - skipping".format(mosaicChl, tileid))
             continue
 
          # sort the directory list 
          saved_paths.sort()
          #
-         # MOSAIC:  check if there is an earlier mosaic file to start with
-         # If not, use a single band file (attributes will be changed later) 
-    
+         # Check if there is a previous mosaic and mosaicdelta to copy from 
          prevMosaicPath = ""
          prevMosDelPath = ""
-         initTileFlag = 0
-         if moscnt > 0:
+         foundPrevMosFlag = False
+         foundPrevMosDelFlag = False
+         # This section determines if mosaic files are recent enough to reference
+         if moscnt > 0 and passOnlyFlag == False:
+            if args.verbose:
+               print("Updating from previous Mosaic file:\n      {}".format(prevMosaicPath[2]))
+            foundPrevMosFlag = True
             mosaic_paths.sort(reverse=True)
             prevMosaicPath = mosaic_paths[0].partition(".")
             refsecs = int(prevMosaicPath[0])
-            if args.verbose:
-               print "Updating from previous Mosaic file:\n      {}".format(prevMosaicPath[2])
             # look for the time delta mosaic file that matches the time of the mosaic
             if mosdelcnt > 0:
-               mosDeltaFile = os.path.basename(prevMosaicPath[2]).replace("mosaic","mosaicdelta")
+               prevMosDelFile = os.path.basename(prevMosaicPath[2]).replace("mosaic","mosaicdelta")
                for pdpath in mosaicdel_paths:
                   #print "pdpath={}".format(os.path.basename(pdpath))
-                  if mosDeltaFile == os.path.basename(pdpath):
-                     # save the previous file as the container for the timedelta mosaic
+                     # save the previous timedelta mosaic filename
+                  if prevMosDelFile == os.path.basename(pdpath):
                      prevMosDelPath = pdpath.partition(".")
-                     print "Updating from previous Time Delta file:\n      {}".format(prevMosDelPath[2])
-                     # Determine the delta time of the most recent pass in the last mosaic
+                     print("Updating from previous Time Delta file:\n      {}".format(prevMosDelPath[2]))
+                     # Determine the delta time of the most recent mosaic
                      lastTimeDelSecs = lastdelta(prevMosDelPath[2])
-                     print "### Timeoffset of last pass is previous file = {}".format(lastTimeDelSecs)
+                     print("### Timeoffset of last pass is previous file = {}".format(lastTimeDelSecs))
                      refsecs -= lastTimeDelSecs
+                     if args.verbose:
+                        print("Mosaic refagediff={} ageLimit={}".format((cursecs-refsecs), ageLimit))
+                     if (cursecs - refsecs) < ageLimit:
+                        foundPrevMosDelFlag = True 
+                     else:
+                        foundPrevMosFlag = False
+                        foundPrevMosDelFlag = False 
                      break
-            if len(prevMosDelPath) < 1:
-               prevMosDelPath = prevMosaicPath
-         else:
-            # if no previous mosaic files were found use the saved template file 
-            # with same tile pixel scale to start the mosaic. Attributes will be 
-            # changed and data loaded later on. This is needed because the AWIPS 
-            # python version is too old to create a blank mosaic file correctly.
-            if len(templatePath) > 3:
-               #  Use a saved file as a template when there are no previous 
-               #  mosaic files to initialize with 
-               print "Template path = {}".format(templatePath)
-               prevMosaicPath = (backsecs, '.', templatePath)
-               prevMosDelPath = (backsecs, '.', templatePath)
-               print "+++  USING TEMPLATE to Init Tile: {} {}".format(tileid, prevMosaicPath)
-            else:
-               print "***  Template file does not exist. Skipping this tile: {}".format(tileid)
-               continue
-            initTileFlag = 1
 
          if args.verbose:
-            print "Reference time: {0} diff from cursecs: {1}".format(refsecs,(cursecs - refsecs))
+            print("Reference time: {0} diff from cursecs: {1}".format(refsecs,(cursecs - refsecs)))
 
-         # check if there is data more recent than the reference file 
+         # This section checks for recent pass data or reference file 
          if passcnt > 0:
             numlast = len(saved_paths) - 1
             firstPassPath = saved_paths[0].partition(".")
             lastPassPath = saved_paths[numlast].partition(".")
             if int(lastPassPath[0]) >= refsecs: 
-               # Make a copy of the file selected as the starting container for
-               # the mosaic with the new mosaic name 
-               	try:
-                   copy(prevMosaicPath[2],mosaicPathname)
-                   copy(prevMosDelPath[2],mosaicDelPathname)
-                except:
-                   print "Not found: {}".format(prevMosaicPath[2])
-                   print "Mosaic template file no longer exists...skipping"
-                   continue
+               print("Recent passes were detected")
             else:
-               print "No recent passes and no recent mosaic data... skipping"
+               print("No passes or mosaics since last composite ... skipping")
+               if args.verbose:
+                  print("last file: {0} | Reference time: {1}".format(lastPassPath[0],refsecs))
                continue
-         elif passOnlyFlag == False and lastTimeDelSecs < ageLimit:
-            # Make a copy of the file selected as the starting container for
-            # the mosaic with the new mosaic name 
-            copy(prevMosaicPath[2],mosaicPathname)
-            copy(prevMosDelPath[2],mosaicDelPathname)
-         else:
-            print "No recent passes and previous mosaic data is older than age limit... skipping"
+         elif foundPrevMosFlag == False:
+            print("No recent passes and previous mosaic older than age limit... skipping")
             continue
-
 
          if args.verbose:
-            print "last file: {0} | Reference time: {1}".format(lastPassPath[0],refsecs)
-         # Open destination file and redefine global attributes
-         destval = initDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl], curfileddtt, xstart, ystart, initTileFlag)
-         if np.size(destval) < 2:
-            print "File problem. Skipping {}".format(mosaicPathname)
-            continue
-         # Open tile delta destination file and redefine global attributes
-         runtimediff = cursecs - int(prevMosDelPath[0])
+            print("last file: {0} | Reference time: {1}".format(lastPassPath[0],refsecs))
 
-         tdeldestval = initTimeDelDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl], curfileddtt, runtimediff, xstart, ystart)
-         if np.size(tdeldestval) < 2:
-            print "File problem. Skipping {}".format(mosaicDelPathname)
-            continue
-        
+         # If recent previous mosaic files exists read the data arrays
+         if foundPrevMosFlag and foundPrevMosDelFlag:
+            destval = readMosaicFile(prevMosaicPath[2],0)
+            destval = destval.astype(int16)
+            tdeldestval = readMosaicFile(prevMosDelPath[2],0)
+            runtimediff = cursecs - int(prevMosDelPath[0])
+            tdelsecs = int(runtimediff / 10)
+            tdeldestval = np.where((tdeldestval < fillvalue),tdeldestval+tdelsecs,tdeldestval)
+         # Otherwise start from scratch
+         else: 
+            destval = np.zeros((xpixels,ypixels))
+            destval = destval.astype(int16)
+            destval.fill(fillvalue)
+            tdeldestval = np.zeros((xpixels,ypixels))
+            tdeldestval = tdeldestval.astype(int16)
+            tdeldestval.fill(fillvalue)
+
          ## Now step through the list of more recent single band data
          ## and lay each successive pass over the earlier one
          if passcnt > 0:
@@ -1036,45 +1129,39 @@ def main():
                lastPassPath = dspath.partition(".")
                thissecs = int(lastPassPath[0])
                if args.verbose:
-                  print "thissecs={}  diff={}".format(thissecs, (thissecs - refsecs))
+                  print("thissecs={}  diff={}".format(thissecs, (thissecs - refsecs)))
                if thissecs >= refsecs:
                   tdelsecs = cursecs - thissecs
                   #print "MERGING!!!"
                   nowtime  = datetime.utcnow()
                   nowddtt = nowtime.strftime("%H:%M:%S")
-                  print "### Bgn merge time: {}".format(nowddtt)
-
-                  print "merge_data({},{},{})".format(lastPassPath[2],mosaicPathname, tdelsecs)
+                  print("      ###############################################")
+                  print("      ### Bgn merge time: {}".format(nowddtt))
+                  print("merge_data({},{},{})".format(lastPassPath[2],mosaicPathname, tdelsecs))
                   (destval,tdeldestval) = merge_data(destval,tdeldestval,lastPassPath[2],tdelsecs)
-                  print "*****File Data Merged!!!!!!!"
-                  #print "DATA DUMP scale={}  offset={}".format(scalefactor, offset)
-                  #print destval[0.0]
-                  #print tdeldestval[0.0]
+                  print("*****File Data Merged!!!!!!!")
+                  #print (destval[0:80, 0:25])
+                  #print (tdeldestval[0:80, 0:25])
                #
-         print "Working on mosaic: {}".format(mosaicPathname)
-         fh_dest = h5py.File(mosaicPathname, "a")
-         dset = fh_dest['data']
-         dset[...] = destval
-         dset.attrs['scale_factor'] = scalefactor
-         dset.attrs['add_offset'] = offset
-         fh_dest.close()
-         #
-         fh_dest = h5py.File(mosaicDelPathname, "a")
-         dset = fh_dest['data']
-         dset[...] = tdeldestval
-         fh_dest.close()
-         print "File Updated!!!!!!!!!!!!!!!!!!!!!!!"
-         #
-         print "Moving {} to {}".format(mosaicPathname, ingestDir)
-         #copy(mosaicPathname,ingestDir)
-         move(mosaicPathname,ingestDir)
-         #######################move(mosaicPathname,ingestDir)
-         print "Moving {} to {}".format(mosaicDelPathname, ingestDir)
-         #copy(mosaicDelPathname,ingestDir)
-         move(mosaicDelPathname,ingestDir)
-         ##########################move(mosaicDelPathname,ingestDir)
+         # lastly check if the tile has any valid data before creating tile file
+         if (np.count_nonzero(destval < fillvalue)):
+            print("Creating mosaic file: {}".format(mosaicPathname))
+            createDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl], dataname, dataunits, curfileddtt, xstart, ystart, destval)
+            createTimeDelDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl], curfileddtt, xstart, ystart, tdeldestval)
+            print("Tile File Updated!!!!!!!!!!!!!!!!!!!!!!!")
+            #
+            print("Moving {} to {}".format(mosaicPathname, ingestDir))
+            #copy(mosaicPathname,ingestDir)
+            move(mosaicPathname,ingestDir)
+            #######################move(mosaicPathname,ingestDir)
+            print("Moving {} to {}".format(mosaicDelPathname, ingestDir))
+            #copy(mosaicDelPathname,ingestDir)
+            move(mosaicDelPathname,ingestDir)
+            ##########################move(mosaicDelPathname,ingestDir)
+         else:
+            print("No valid data. Tile skipped!!!!!!!!!!!!!!!!!!!!!!!")
 
-   return   
+   return  
 
 if __name__ == '__main__':
     # This is only executed if the script is run from the command line.

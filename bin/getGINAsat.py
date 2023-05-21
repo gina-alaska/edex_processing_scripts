@@ -1,7 +1,6 @@
 #!/usr/bin/env /awips2/python/bin/python
 
-import urllib2, urlparse
-import urllib
+import urllib.request
 import datetime
 import os, sys
 import gzip
@@ -12,8 +11,7 @@ from HTMLParser import HTMLParser
 from datetime import datetime, timedelta
 from pytz import timezone
 import numpy
-import Scientific.IO.NetCDF
-from Scientific.IO import NetCDF
+import netCDF4
 from nucaps4awips import fix_nucaps_file
 from ncImageQC import qc_image_file
 
@@ -27,21 +25,21 @@ class MyHTMLParser(HTMLParser):
    def handle_starttag(self, tag, attrs):
       """ look for start tag and turn on recording """
       if tag == 'a':
-         #print "Encountered a url tag:", tag
+         #print ("Encountered a url tag:", tag)
          self.record = True 
-      #print "Encountered a start tag:", tag
+      #print ("Encountered a start tag:", tag)
    def handle_endtag(self, tag):
       """ look for end tag and turn on recording """
       if tag == 'a':
-         #print "Encountered end of url tag :", tag
+         #print ("Encountered end of url tag :", tag)
          self.record = False 
    def handle_data(self, data):
       """ handle data string between tags """
       if verbose:
-         print "Found data line: ", data
+         print ("Found data line: ", data)
       lines = data.splitlines()
       for dline in lines:
-         #print "LINE: ",dline
+         #print ("LINE: ",dline)
          # make sure line is not blank
          if len(dline) > 1:
             self.satfile.append(dline)
@@ -119,33 +117,33 @@ def main():
    bgnsecs = bgntime.strftime("%s")
    bgnstr = bgntime.strftime("%Y-%m-%d+%H%M")
    endstr = endtime.strftime("%Y-%m-%d+%H%M")
-   #print "format={}  satellite={}".format(level, satellite) 
+   #print ("format={}  satellite={}".format(level, satellite))
    ######
    dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0,"atms":0,"amsr2":0}
    #
    if verbose:
-      print "Dates: ",bgnstr," / ",endstr
+      print ("Dates: ",bgnstr," / ",endstr)
    #
    downloads = 0
    for sensor in args.sensor:
-      print "Requesting: {}".format(sensor)
+      print ("Requesting: {}".format(sensor))
       #
       if satellite == 'all':
          listurl = "http://{0}.gina.alaska.edu/products.txt?sensors[]={1}&processing_levels[]={2}&start_date={3}&end_date={4}".format(datasrc, sensor, level, bgnstr, endstr)
       else:
          listurl = "http://{0}.gina.alaska.edu/products.txt?satellites[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, satellite, sensor, level, bgnstr, endstr)
       #
-      print "URL=",listurl
-      sock = urllib.urlopen (listurl)
+      print ("URL=",listurl)
+      sock = urllib.request.urlopen (listurl)
 
-      htmlSource = sock.read()
+      htmlSource = str(sock.read(),'UTF-8')
       sock.close()
       if verbose:
-         print "BEGIN HTML ======================================================="
-         print htmlSource
-         print "END HTML ========================================================="
+         print ("BEGIN HTML =======================================================")
+         print (htmlSource)
+         print ("END HTML =========================================================")
       rtnval = len(htmlSource)
-      print "HTML String length = {}".format(rtnval)
+      print ("HTML String length = {}".format(rtnval))
       # instantiate the parser and feed it the HTML page
       parser = MyHTMLParser()
       parser.feed(htmlSource)
@@ -163,28 +161,28 @@ def main():
          if testsrc:
             fileurl = fileurl.replace("dds.gina.alaska.edu/nrt","nrt-dds-test.gina.alaska.edu")
          if verbose:
-            print "Downloading: {}".format(fileurl)
+            print ("Downloading: {}".format(fileurl))
          filename = "{}".format(fileurl.split("/")[-1])
          if matchstr:
-            #print "looking for matchstr=[{}]".format(matchstr)
+            #print ("looking for matchstr=[{}]".format(matchstr))
             if matchstr in filename:
-               print "Found: {}".format(filename)
+               print ("Found: {}".format(filename))
             else:
                continue
 
-         print "FILENAME={}".format(filename)
-         urllib.urlretrieve(fileurl, filename)
+         print ("FILENAME={}".format(filename))
+         urllib.request.urlretrieve(fileurl, filename)
          if os.path.isfile(filename):
             fsize = os.path.getsize(filename)
             dcount += 1                      
             nameseg = filename.split('.')
             basenm = nameseg[0]              
             if verbose: 
-               print "Basename = {}".format(basenm)
+               print ("Basename = {}".format(basenm))
             # use base name to create a new name with "Alaska" prefix and ".nc" extension
             if args.regionalsat:
                newfilename="Alaska_{}.nc".format(basenm)
-               print "Adding prefix: {}".format(newfilename)
+               print ("Adding prefix: {}".format(newfilename))
             else:
                newfilename=filename
 
@@ -195,18 +193,18 @@ def main():
                s = inF.read()
                inF.close()
                # now write uncompressed result to the new filename
-               outF = file(newfilename, 'wb')
+               outF = open(newfilename, 'wb')
                outF.write(s)
                outF.close()
                # make sure the decompression was successful
                if not os.path.exists(newfilename):
-                   print "Decompression failed: {}".format(filename)
+                   print ("Decompression failed: {}".format(filename))
                    raise SystemExit
                # redirected compression copies to a new file so old compressed file needs to be removed
                os.remove(filename)
                #
                if verbose:
-                  print "File decompressed: {}".format(newfilename)
+                  print ("File decompressed: {}".format(newfilename))
 
             elif ".nc" in filename:
                move(filename, newfilename)
@@ -217,50 +215,50 @@ def main():
             # last step is to do QC checks on the data
             if args.qcfilter:
                if qc_image_file(filename, minPixelCount, minPixelRange):
-                  print "Moving {} to {}".format(filename, ingestDir)
+                  print ("Moving {} to {}".format(filename, ingestDir))
                   move(filename,ingestDir)
                   ingcount += 1
                else:
-                  print "QC failed. Removing: {}".format(filename)
+                  print ("QC failed. Removing: {}".format(filename))
                   os.remove(filename)
             ###############################################
             else:
                # Check whether this is nucaps sounding which needs
                # file modification for AWIPS
                if level == 'nucaps_level2':
-                   print "NUCAPS: {}".format(filename)
+                   print ("NUCAPS: {}".format(filename))
                    if "NUCAPS-EDR" in filename:
                       origFilename = filename
-                      print "fix nucaps file"
+                      print ("fix nucaps file")
                       filename = fix_nucaps_file(origFilename)
-                      print "new filename = {}".format(filename)
+                      print ("new filename = {}".format(filename))
                       if os.path.exists(filename):
                          # a new converted file has been made so remove the original file
-                         print "Removing: {}".format(origFilename)
+                         print ("Removing: {}".format(origFilename))
                          #move(origFilename,"/home/awips/testscripts/testdata")
                          os.remove(origFilename)
                    else:
-                      print "Removing: {}".format(filename)
+                      print ("Removing: {}".format(filename))
                       os.remove(filename)
                       continue 
                # Now check if the file already exists ingest directory
                ingestfilename = "{}/{}".format(ingestDir,filename)
                if os.path.exists(ingestfilename):
-                  print "File already exists in Ingest Dir...removing: {}".format(filename)
+                  print ("File already exists in Ingest Dir...removing: {}".format(filename))
                   os.remove(filename)
                   continue
                elif doingest:
                   # OK, ready to move the file to the ingest directory
-                  print "Moving {} to {}".format(filename, ingestDir)
-	          try:
+                  print ("Moving {} to {}".format(filename, ingestDir))
+                  try:
                      move(filename,ingestDir)
-	          except:
-                     print "************  Unable to  move file to ingest: {}".format(filename)
+                  except:
+                     print ("************  Unable to  move file to ingest: {}".format(filename))
                      continue
                else:
-                  print "No ingest for {}".format(filename)
+                  print ("No ingest for {}".format(filename))
                ingcount += 1
-               print "INGEST CNT = {}".format(ingcount) 
+               print ("INGEST CNT = {}".format(ingcount))
             #
          else:
             fsize = 0
@@ -271,8 +269,8 @@ def main():
          cnt += 1
 
    for sensor in args.sensor:
-      print "{} files downloaded={}".format(sensor,dset_count[sensor])
-   print "Total files downloaded={} ingested={}  total size={}".format(downloads, ingcount, totsize)
+      print ("{} files downloaded={}".format(sensor,dset_count[sensor]))
+   print ("Total files downloaded={} ingested={}  total size={}".format(downloads, ingcount, totsize))
 
 if __name__ == '__main__':
     main()
