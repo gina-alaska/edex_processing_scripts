@@ -46,45 +46,45 @@ def main():
        os.remove(oldlogpath) 
     ###################################
 
-    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
+    print ("------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath))
 
     if not os.path.exists(args.filepath):
-        print "File not found: {}".format(args.filepath)
+        print ("File not found: {}".format(args.filepath))
         raise SystemExit
 
     filepath = args.filepath
     # Looking for NUCAPS-EDR files ... remove any other NUCAPS file types
     if "IUTN" in filepath:
-       print "Moving {} to {}".format(filepath, ingestDir)
+       print ("Moving {} to {}".format(filepath, ingestDir))
        try:
           move(filepath,ingestDir)
        except:
-          print "Move to ingest failed. Removing: {}".format(filepath)
+          print ("Move to ingest failed. Removing: {}".format(filepath))
           os.remove(filepath)
        raise SystemExit
        #
     if "NUCAPS-ALL" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       print ("Unrecognized format: {}  Exiting...".format(args.filepath))
        os.remove(filepath)
        raise SystemExit
     if "NUCAPS-OLR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       print ("Unrecognized format: {}  Exiting...".format(args.filepath))
        os.remove(filepath)
        raise SystemExit
     if "NUCAPS-CCR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       print ("Unrecognized format: {}  Exiting...".format(args.filepath))
        os.remove(filepath)
        raise SystemExit
     if "NUCAPS_CCR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       print ("Unrecognized format: {}  Exiting...".format(args.filepath))
        os.remove(filepath)
        raise SystemExit
     if "NUCAPS_CCR" in filepath:
-       print "Unrecognized format: {}  Exiting...".format(args.filepath)
+       print ("Unrecognized format: {}  Exiting...".format(args.filepath))
        os.remove(filepath)
        raise SystemExit
 
-    print "Skipping conversion process for {}  Exiting...".format(args.filepath)
+    print ("Skipping conversion process for {}  Exiting...".format(args.filepath))
     os.remove(filepath)
     raise SystemExit
 
@@ -106,32 +106,32 @@ def main():
        s = inF.read()
        inF.close()
        # now write uncompressed result to the new filename 
-       outF = file(newfilepath, 'wb')
+       outF = open(newfilepath, 'wb')
        outF.write(s)
        outF.close()
        #
        # make sure the decompression was successful
        if not os.path.exists(newfilepath):
-          print "Decompression failed: {}".format(filepath)
+          print ("Decompression failed: {}".format(filepath))
           raise SystemExit
        #
-       print "File decompressed: {}".format(newfilepath)
+       print ("File decompressed: {}".format(newfilepath))
        # redirected compression copies to a new file so old compressed file needs to be removed
        os.remove(filepath)
        # set the filepath to point to the uncompresses name
        filepath = newfilepath
        #
     if ".nc" in filepath:
-       print "fix nucaps file"
+       print ("fix nucaps file")
        newfilename = fix_nucaps_file(filepath)
-       print "new filename = {}".format(newfilename)
+       print ("new filename = {}".format(newfilename))
        newfilepath = "{}/{}".format(tmpDir,newfilename)
        if os.path.exists(newfilepath):
           # a new converted file has been made so remove the original file
-          print "Removing: {}".format(filepath)
+          print ("Removing: {}".format(filepath))
           os.remove(filepath)
        else:
-          print "Conversion failed: {}".format(filepath)
+          print ("Conversion failed: {}".format(filepath))
           raise SystemExit
           
        # assign filepath to the new converted file
@@ -142,16 +142,16 @@ def main():
        ##############################################
        #
        # OK, ready to move the file to the ingest directory
-       print "Moving {} to {}".format(filepath, ingestDir)
+       print ("Moving {} to {}".format(filepath, ingestDir))
        try:
           move(filepath,ingestDir)
        except:
-          print "Move to ingest failed. Removing: {}".format(filepath)
+          print ("Move to ingest failed. Removing: {}".format(filepath))
           os.remove(filepath)
        #
     # a file with a UAF prefix and no ".gz" extension is unknown
     else:
-       print "Unrecognized file format: {}".format(filepath)
+       print ("Unrecognized file format: {}".format(filepath))
     #
     return
 

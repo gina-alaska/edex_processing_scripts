@@ -13,8 +13,7 @@
 import os, sys
 import numpy
 import argparse
-import Scientific.IO.NetCDF
-from Scientific.IO import NetCDF
+import netCDF4
 
 #####################################################################
 
@@ -45,19 +44,20 @@ def qc_image_file(filepath, mincnt, minrng):
    """Process the command line arguments."""
 
    if not os.path.exists(filepath):
-      print "File not found: ", filepath 
+      print ("File not found: {}", format(filepath))
       raise SystemExit
    try:
-      cdf_fh = NetCDF.NetCDFFile(filepath, "r")
+      cdf_fh = netCDF4.Dataset(filepath, mode="r")
    except IOError:
-      print 'Error opening {}'.format(filepath)
+      print ('Error opening {}'.format(filepath))
       raise SystemExit
    except OSError:
-      print 'Error accessing {}'.format(filepath)
+      print ('Error accessing {}'.format(filepath))
       raise SystemExit
 
    varid = cdf_fh.variables['image']
-   pixdata = varid.getValue()
+   #pixdata = varid.getValue()
+   pixdata = varid[:,:]
    cdf_fh.close()
    #
    pixcnt = numpy.sum(pixdata != 0)
@@ -68,19 +68,19 @@ def qc_image_file(filepath, mincnt, minrng):
       
    #
    if verbose:
-      print "pixmax = {} pixmin = {}".format(pixmax, pixmin)
-      print "{} pixels with range: {}".format(pixcnt, pixrng)
+      print ("pixmax = {} pixmin = {}".format(pixmax, pixmin))
+      print ("{} pixels with range: {}".format(pixcnt, pixrng))
 
    if mincnt == 0 and minrng == 0:
       return True
    #
    if mincnt > 0 and pixcnt < mincnt:
       if verbose:
-         print "Too few valid pixels"
+         print ("Too few valid pixels")
       return False
    elif minrng > 0 and pixrng < minrng:
       if verbose:
-         print "Range too narrow"
+         print ("Range too narrow")
       return False
    else:
       return True
@@ -102,14 +102,14 @@ def main():
    verbose = args.verbose
    if args.mincnt == 0 and args.minrng == 0:
       if verbose == False:
-         print "No thresholds specified...reporting results only:"
+         print ("No thresholds specified...reporting results only:")
          verbose = True
    #
    if qc_image_file(args.filepath, args.mincnt, args.minrng) == False:
-      print "QC FAIL"
+      print ("QC FAIL")
    else:
       if args.mincnt > 0 and args.minrng > 0:
-         print "QC PASS"
+         print ("QC PASS")
 
    return
 

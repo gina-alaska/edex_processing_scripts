@@ -38,29 +38,29 @@ def main():
       backsecs = int(backtime.strftime("%s"))
       #timedelay = time.time() - args.deltasecs 
       if args.verbose:
-         print "Checking for gzip files older than {}.".format(
-             backtime.strftime("%Y-%m-%d %H:%M:%S"))
+         print ("Checking for gzip files older than {}.".format(
+             backtime.strftime("%Y-%m-%d %H:%M:%S")))
       cnt = 0
       for filename in os.listdir(args.dirpath):
          filepath = os.path.join(args.dirpath,filename)
          mtime=os.path.getmtime(filepath)
          if args.verbose:
-            print "{} {}".format(datetime.fromtimestamp(mtime),filepath)
+            print ("{} {}".format(datetime.fromtimestamp(mtime),filepath))
          if mtime < backsecs:
-            print "OLD: {}".format(filepath)
+            print ("OLD: {}".format(filepath))
             if ".gz" in filepath:
                #pass
-               print "Removing: {}".format(filepath)
+               print ("Removing: {}".format(filepath))
                os.unlink(filepath) # uncomment only if you are sure
                cnt += 1
             else:
-               print "No delete. Missing gz extension: {}".format(filename)
+               print ("No delete. Missing gz extension: {}".format(filename))
                 
    else:
-       print "Invalid path: {}".format(args.dirpath)
+       print ("Invalid path: {}".format(args.dirpath))
 
    if args.verbose:
-      print "Files removed: {}".format(cnt)
+      print ("Files removed: {}".format(cnt))
 
    return
 
