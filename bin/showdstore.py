@@ -37,9 +37,6 @@ def _process_command_line():
     parser.add_argument(
        '-v', '--verbose', action='store_true', help='verbose flag'
     )
-    parser.add_argument(
-       '-y', '--yesterday', action='store_true', help='display passes from yesterday'
-    )
     args = parser.parse_args()
     return args
 
@@ -434,7 +431,13 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     #print(date + ' ' + time + ' ' + sat) # debugging
     if sat:
         format_pass = f"{date} {time} {sat} {snsr}"
-        if format_pass not in passes:
+        if args.match == 'viirs' and snsr != "VIIRS":
+            return passes
+        elif args.match == 'modis' and snsr != "MODIS":
+            return passes
+        elif args.match == 'avhrr' and snsr != "AVHRR":
+            return passes
+        elif format_pass not in passes:
             passes.append(format_pass)
     return passes
 
