@@ -4,9 +4,7 @@
 import argparse
 import os
 import datetime
-from datetime import datetime
-from datetime import timedelta
-import time
+from datetime import datetime, timedelta
 
 def _process_command_line():
     """Process the command line arguments.
@@ -25,7 +23,10 @@ def _process_command_line():
         '-m', '--match', action='store', help='string pattern to match'
     )
     parser.add_argument(
-        '-l', '--latency', action='store_true', help='compare file dat and time stamp'
+        '-lo', '--latencyonly', action='store_true', help='compare file dat and time stamp'
+    )
+    parser.add_argument(
+        '-po', '--passesonly', action='store_true', help='show pass time, satelite, and sensor only'
     )
     parser.add_argument(
         '-s', '--tstamp', action='store_true', help='show time stamps only'
@@ -36,20 +37,26 @@ def _process_command_line():
     parser.add_argument(
        '-v', '--verbose', action='store_true', help='verbose flag'
     )
+    parser.add_argument(
+       '-y', '--yesterday', action='store_true', help='display passes from yesterday'
+    )
     args = parser.parse_args()
     return args
 
-#####################################################################
 def getvalidtime(path, ftype, verbose):
      """ extract the valid date and time from the filename. """
      fname = os.path.basename(path)
      fparts=fname.split('_')
+     vsecs = 0
+     dtstr = ""
+     satellite = ""
+     sensor = ""
      fplen = len(fparts)
      #for part in fparts:
      #   print part
      #print "Type: {}".format(ftype)
      if ftype == "goesr":
-        if "Polar" in path:
+        if "metopc" in path:
            idx = fparts.index("Polar")
            datestr = fparts[idx+2]
            timestr = fparts[idx+3]
@@ -61,8 +68,136 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-        elif "G17" in path:
-           idx = fparts.index("G17")
+           satellite = "METOP-C"
+           sensor = "AVHRR"
+        if "metopb" in path:
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "METOP-B"
+           sensor = "AVHRR"
+        elif "noaa21" in path:
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")   
+           satellite = "NOAA-21"   
+           sensor = "VIIRS"  
+        elif "noaa20" in path:
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           vsecs = int(vtime.strftime("%s"))   
+           satellite = "NOAA-20"
+           sensor = "VIIRS"
+        elif "no20" in path:
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "NOAA-20"
+           sensor = "VIIRS"
+        elif "noaa19" in path:
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "NOAA-19"
+           sensor = "AVHRR"
+        elif "noaa18" in path:
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "NOAA-18"
+           sensor = "AVHRR"
+        elif "npp" in path: 
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "S-NPP"
+           sensor = "VIIRS"
+        elif "terra" in path: 
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "TERRA"
+           sensor = "MODIS"
+        elif "aqua" in path: 
+           idx = fparts.index("Polar")
+           datestr = fparts[idx+2]
+           timestr = fparts[idx+3]
+           vyr = int(datestr[:4])
+           vmo = int(datestr[4:6])
+           vda = int(datestr[6:8])
+           vhr = int(timestr[0:2])
+           vmn = int(timestr[2:4])
+           vtime = datetime(vyr, vmo, vda, vhr, vmn)
+           vsecs = int(vtime.strftime("%s"))
+           dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "AQUA"
+           sensor = "MODIS"
+        elif "G18" in path:
+           idx = fparts.index("G18")
            datestr = fparts[idx+2]
            vyr = int(datestr[1:5])
            vjd = int(datestr[5:8])
@@ -75,11 +210,14 @@ def getvalidtime(path, ftype, verbose):
            #print "{}/{}/{}/{}/{}".format(vyr,vmo,vda,vhr,vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = ""
+           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
+           satellite = ""
      elif ftype == "regionalsat":
         if "sport" in path:
            idx = fparts.index("sport")
@@ -93,6 +231,8 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = ""
+           sensor = ""
         elif "VSCD-AK" in path:
            idx = fparts.index("VIIRS")
            datestr = fparts[idx+1]
@@ -105,6 +245,8 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = ""
+           sensor = "VIIRS"
         elif "RIVER" in path:
            idx = fparts.index("1KM")
            datestr = fparts[idx+2]
@@ -117,11 +259,14 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = ""
+           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
+           satellite = ""
      elif ftype == "nucaps":
         pathparts=path.split('/')
         pdx = pathparts.index("nucaps")
@@ -136,6 +281,8 @@ def getvalidtime(path, ftype, verbose):
         vtime = datetime(vyr, vmo, vda, vhr, vmn)
         vsecs = int(vtime.strftime("%s"))
         dtstr = vtime.strftime("%y%m%d_%H%M")
+        satellite = ""
+        sensor = ""
      elif ftype == "pointset":
         if "v2r2" in path:
            idx = fparts.index("v2r2")
@@ -148,11 +295,15 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = ""
+           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
+           satellite = ""
+           sensor = ""
      elif ftype == "netcdfGrid":
         if "CMORPH2" in path:
            idx = fparts.index("0.05deg-30min")
@@ -165,122 +316,231 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = ""
+           sensor = ""
+        else:
+           if verbose:
+              print ("Unknown {} file: {}".format(ftype, path))
+           vsecs = 0
+           dtstr = ""   
+           satellite = ""        
+           sensor = ""
+     elif ftype == "dmw":
+        if "S-NPP" in path: 
+         idx = fparts.index("S-NPP")
+         datestr = fparts[idx+1]  
+         timestr = fparts[idx+1] 
+         vyr = int(datestr[:4]) 
+         vmo = int(datestr[4:6]) 
+         vda = int(datestr[6:8])
+         vhr = int(timestr[9:11])
+         vmn = int(timestr[11:13])
+         vtime = datetime(vyr, vmo, vda, vhr, vmn)
+         vsecs = int(vtime.strftime("%s"))
+         dtstr = vtime.strftime("%y%m%d_%H%M")
+         satellite = "S-NPP"
+         sensor = "VIIRS"
+        elif "NOAA-20" in path:
+         idx = fparts.index("NOAA-20")
+         datestr = fparts[idx+1]  
+         timestr = fparts[idx+1] 
+         vyr = int(datestr[:4]) 
+         vmo = int(datestr[4:6]) 
+         vda = int(datestr[6:8])
+         vhr = int(timestr[9:11])
+         vmn = int(timestr[11:13])
+         vtime = datetime(vyr, vmo, vda, vhr, vmn)
+         vsecs = int(vtime.strftime("%s"))
+         dtstr = vtime.strftime("%y%m%d_%H%M")
+         satellite = "NOAA-20"
+         sensor = "VIIRS"
+        elif "NOAA-21" in path: 
+         idx = fparts.index("NOAA-21")
+         datestr = fparts[idx+1] 
+         timestr = fparts[idx+1] 
+         vyr = int(datestr[:4]) 
+         vmo = int(datestr[4:6]) 
+         vda = int(datestr[6:8])
+         vhr = int(timestr[9:11])
+         vmn = int(timestr[11:13])
+         vtime = datetime(vyr, vmo, vda, vhr, vmn)
+         vsecs = int(vtime.strftime("%s"))
+         dtstr = vtime.strftime("%y%m%d_%H%M")
+         satellite = "NOAA-21"
+         sensor = "VIIRS"
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
-     else:
-        if verbose:
-           print ("Unknown {} file: {}".format(ftype, path))
-        vsecs = 0
-        dtstr = ""
-     return(vsecs,dtstr)
-     
-#####################################################################
-def get_filepaths(directory):
-    """ generate the filenames in a directory tree by walking down
-    the tree. """
+           satellite = ""
+           sensor = ""
+     elif ftype == "grib": 
+        if "TPW" in path: 
+         idx = fparts.index("TPW")
+         datestr = fparts[idx+1]  
+         timestr = fparts[idx+2] 
+         vyr = int(datestr[:4]) 
+         vmo = int(datestr[4:6]) 
+         vda = int(datestr[6:8])
+         vhr = int(timestr[0:2])
+         vmn = int(timestr[2:4])
+         vtime = datetime(vyr, vmo, vda, vhr, vmn)
+         vsecs = int(vtime.strftime("%s"))
+         dtstr = vtime.strftime("%y%m%d_%H%M")
+         satellite = "grib"
+         sensor = ""
+        else:
+           if verbose:
+              print ("Unknown {} file: {}".format(ftype, path))
+           vsecs = 0
+           dtstr = ""
+           satellite = ""
+           sensor = ""
+     elif ftype == "griddednucaps":  
+        if "KNES" in path:
+         idx = fparts.index("KNES")
+         dir = path.split("/")
+         diridx = dir.index("griddednucaps")
+         subdirdatestr = dir[diridx + 1] 
+         datestr = subdirdatestr  
+         timestr = fparts[idx+1] 
+         vyr = int(datestr[:4]) 
+         vmo = int(datestr[4:6]) 
+         vda = int(datestr[6:8])
+         vhr = int(timestr[2:4])
+         vmn = int(timestr[4:6])
+         vtime = datetime(vyr, vmo, vda, vhr, vmn)
+         vsecs = int(vtime.strftime("%s"))
+         dtstr = vtime.strftime("%y%m%d_%H%M")
+         satellite = "KNES"
+         sensor = ""
+        else:
+           if verbose:
+              print ("Unknown {} file: {}".format(ftype, path))
+           vsecs = 0
+           dtstr = ""
+           satellite = ""
+           sensor = ""
+     #print(dtstr + ' ' + satellite) # debugging
+     return (vsecs, dtstr, satellite, sensor)
 
+def get_passes_by_type(path, ddttstr, sat, snsr, passes):
+    """Get passes for a specific file type and date."""
+    args = _process_command_line()
+    _, ddttstr, sat, snsr = getvalidtime(path, args.type, args.verbose)
+    date = str(ddttstr)[:6]
+    time = str(ddttstr)[7:]
+    #print(date + ' ' + time + ' ' + sat) # debugging
+    if sat:
+        format_pass = f"{date} {time} {sat} {snsr}"
+        if format_pass not in passes:
+            passes.append(format_pass)
+    return passes
+
+
+def get_filepaths(directory):
+    """Generate the filenames in a directory tree by walking down the tree."""
     file_paths = []
     for root, directories, files in os.walk(directory):
         for filename in files:
-           # Join the two strings to form the full path
-           filepath = os.path.join(root,filename)
-           file_paths.append(filepath)
-
+            # Join the two strings to form the full path
+            filepath = os.path.join(root, filename)
+            file_paths.append(filepath)
     return file_paths
-
-#####################################################################
 
 def main():
     """Call to run script."""
     basedirectory = "/data_store/manual"
-
+    passes = []
     args = _process_command_line()
-    searchpath = "{}/{}".format(basedirectory,args.type)
-
-    curtime  = datetime.utcnow()
+    searchpath = "{}/{}".format(basedirectory, args.type)
+    curtime = datetime.utcnow()
     if args.day is not None:
         if int(args.day) > 31:
-           dom = int(args.day) % 100
-           mon = int(args.day) / 100
-           subDir = '{}{:02}{:02}'.format(curtime.strftime("%Y"),mon,dom)
+            dom = int(args.day) % 100
+            mon = int(args.day) / 100
+            subDir = '{}{:02}{:02}'.format(curtime.strftime("%Y"), mon, dom)
         else:
-           subDir = '{}{:02}'.format(curtime.strftime("%Y%m"),int(args.day))
-        paths = get_filepaths('{}/{}'.format(searchpath,subDir))
+            subDir = '{}{:02}'.format(curtime.strftime("%Y%m"), int(args.day))
+        paths = get_filepaths('{}/{}'.format(searchpath, subDir))
     else:
         subDir = curtime.strftime("%Y%m%d")
-    print (subDir)
-    paths = get_filepaths('{}/{}'.format(searchpath,subDir))
+    print(subDir)
+    paths = get_filepaths('{}/{}'.format(searchpath, subDir))
     paths.sort(reverse=True)
-
-    #if args.match:
-    #   print "Matching {}".format(args.match)
-    #
     count = 0
     unknown = 0
     sumlatency = 0
     maxlatency = 0
     minlatency = 2000
     file_times = []
+    unique_passes = set()
     for path in paths:
-       savesecs=os.path.getmtime(path)
-       savetime=datetime.fromtimestamp(savesecs)
-       validsecs,ddttstr = getvalidtime(path, args.type, args.verbose)
-       latency = int((savesecs - validsecs) / 60)
-       #HHMMstr = savetime.strftime("%H%M")
-       if args.match:
-          if args.match in path:
-             if args.latency:
-                print ("{:d}m {}".format(latency, path))
-             elif args.tstamp:
+        savesecs = os.path.getmtime(path)
+        savetime = datetime.fromtimestamp(savesecs)
+        validsecs, ddttstr, sat, snsr = getvalidtime(path, args.type, args.verbose)
+        latency = int((savesecs - validsecs) / 60)
+        passes = get_passes_by_type(path, ddttstr, sat, snsr, passes)
+        sorted_passes = sorted(passes)  # Sort the passes list in ascending order
+        if args.match:
+            if args.match in path:
+                if args.latencyonly:
+                    print("{:d}m {}".format(latency, path))
+                elif args.tstamp:
+                    if ddttstr not in file_times:
+                        file_times.append(ddttstr)
+                elif args.passesonly:
+                    unique_passes.update(sorted_passes)
+                else:
+                    print("{}".format(path))
+                if validsecs > 0:
+                    sumlatency += latency
+                    if latency > maxlatency:
+                        maxlatency = latency
+                    if latency < minlatency:
+                        minlatency = latency
+                    count += 1
+                else:
+                    unknown += 1
+        else:
+            if args.latencyonly:
+                print("{:d}m {}".format(latency, path))
+            elif args.tstamp:
                 if ddttstr not in file_times:
-                   file_times.append(ddttstr)
-             else: 
-                print ("{}".format(path))
-             if validsecs > 0:
+                    file_times.append(ddttstr)
+            elif args.passesonly:
+                unique_passes.update(sorted_passes)
+            else:
+                print("{}".format(path))
+                pass
+            if validsecs > 0:
                 sumlatency += latency
                 if latency > maxlatency:
-                   maxlatency = latency
+                    maxlatency = latency
                 if latency < minlatency:
-                   minlatency = latency
+                    minlatency = latency
                 count += 1
-             else:
+            else:
                 unknown += 1
-       else:
-          if args.latency:
-             print ("{:d}m {}".format(latency, path))
-          elif args.tstamp:
-             if ddttstr not in file_times:
-                file_times.append(ddttstr)
-          else: 
-             print ("{}".format(path))
-          if validsecs > 0:
-             sumlatency += latency
-             if latency > maxlatency:
-                maxlatency = latency
-             if latency < minlatency:
-                minlatency = latency
-             count += 1
-          else:
-             unknown += 1
-
+    if args.passesonly:
+        unique_passes = sorted(unique_passes)
+        if unique_passes:
+            print('\n'.join(unique_passes))
     if count > 0:
-       file_times.sort()
-       if args.tstamp:
-          if  not args.abbrev:
-             for ddttstr in file_times:
-                print ("{}".format(ddttstr))
-       avglatency = sumlatency / count
-       print ("Products found: {}".format(count))
-       print ("Avg latency = {:.1f} min".format(avglatency))
-       print ("Max latency = {:d} min".format(maxlatency))
-       print ("Min latency = {:d} min".format(minlatency))
+        file_times.sort()
+        if args.tstamp and not args.abbrev:
+           for ddttstr in file_times:
+               print("{}".format(passes))
+        avglatency = sumlatency / count
+        print("Products found: {}".format(count))
+        print("Avg latency = {:.1f} min".format(avglatency))
+        print("Max latency = {:d} min".format(maxlatency))
+        print("Min latency = {:d} min".format(minlatency))
     else:
-       print ("Nothing matches criteria.")
-       if unknown > 0:
-          print ("Unknown products: {}".format(unknown))
+        print("Nothing matches criteria.")
+        if unknown > 0:
+            print("Unknown products: {}".format(unknown))
 
     return
 
