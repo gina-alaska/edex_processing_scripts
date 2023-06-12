@@ -8,37 +8,31 @@ from datetime import datetime, timedelta
 
 def _process_command_line():
     """Process the command line arguments.
-
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-d', '--day', action='store', help='day of month to search'
-    )
-    parser.add_argument(
-        '-t', '--type', action='store', default='regionalsat', \
-        help='type of file (goesr, grib, nucaps, regionalsat)'
-    )
-    parser.add_argument(
-        '-m', '--match', action='store', help='string pattern to match'
-    )
-    parser.add_argument(
-        '-lo', '--latencyonly', action='store_true', help='compare file dat and time stamp'
-    )
-    parser.add_argument(
-        '-po', '--passesonly', action='store_true', help='show pass time, satelite, and sensor only'
-    )
-    parser.add_argument(
-        '-s', '--tstamp', action='store_true', help='show time stamps only'
-    )
-    parser.add_argument(
-        '-b', '--abbrev', action='store_true', help='abbreviate results'
-    )
-    parser.add_argument(
-       '-v', '--verbose', action='store_true', help='verbose flag'
-    )
+    parser.add_argument('-d', '--day', action='store', help='day of month to search')
+    parser.add_argument('-t', '--type', action='store', default='regionalsat', help='type of file (goesr, grib, nucaps, regionalsat)')
+    parser.add_argument('-m', '--match', action='store', help='string pattern to match')
+    parser.add_argument('-lo', '--latencyonly', action='store_true', help='compare file dat and time stamp')
+    parser.add_argument('-po', '--passesonly', action='store_true', help='show pass time, satellite, and sensor only')
+    parser.add_argument('-s', '--tstamp', action='store_true', help='show time stamps only')
+    parser.add_argument('-b', '--abbrev', action='store_true', help='abbreviate results')
+    parser.add_argument('-v', '--verbose', action='store_true', help='verbose flag')
     args = parser.parse_args()
     return args
+
+satellites = {
+    "terra": "terra",
+    "aqua": "aqua",
+    "noaa21": "noaa21",
+    "noaa20": "noaa20",
+    "no20": "noaa20",
+    "noaa19": "noaa19",
+    "noaa18": "noaa18",
+    "metopc": "metopc",
+    "metopb": "metopb"
+}
 
 def getvalidtime(path, ftype, verbose):
      """ extract the valid date and time from the filename. """
@@ -49,11 +43,8 @@ def getvalidtime(path, ftype, verbose):
      satellite = ""
      sensor = ""
      fplen = len(fparts)
-     #for part in fparts:
-     #   print part
-     #print "Type: {}".format(ftype)
      if ftype == "goesr":
-        if "metopc" in path:
+        if "Polar" in path:
            idx = fparts.index("Polar")
            datestr = fparts[idx+2]
            timestr = fparts[idx+3]
@@ -65,134 +56,12 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "METOP-C"
-           sensor = "AVHRR"
-        if "metopb" in path:
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "METOP-B"
-           sensor = "AVHRR"
-        elif "noaa21" in path:
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")   
-           satellite = "NOAA-21"   
-           sensor = "VIIRS"  
-        elif "noaa20" in path:
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           vsecs = int(vtime.strftime("%s"))   
-           satellite = "NOAA-20"
-           sensor = "VIIRS"
-        elif "no20" in path:
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "NOAA-20"
-           sensor = "VIIRS"
-        elif "noaa19" in path:
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "NOAA-19"
-           sensor = "AVHRR"
-        elif "noaa18" in path:
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "NOAA-18"
-           sensor = "AVHRR"
-        elif "npp" in path: 
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "S-NPP"
-           sensor = "VIIRS"
-        elif "terra" in path: 
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "TERRA"
-           sensor = "MODIS"
-        elif "aqua" in path: 
-           idx = fparts.index("Polar")
-           datestr = fparts[idx+2]
-           timestr = fparts[idx+3]
-           vyr = int(datestr[:4])
-           vmo = int(datestr[4:6])
-           vda = int(datestr[6:8])
-           vhr = int(timestr[0:2])
-           vmn = int(timestr[2:4])
-           vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           vsecs = int(vtime.strftime("%s"))
-           dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = "AQUA"
-           sensor = "MODIS"
+           for keyword, value in satellites.items():
+                if keyword in path:
+                    idx = fparts.index(keyword)
+                    satellite = fparts[idx]
+                    sensor = fparts[idx+1]
+                    break
         elif "G18" in path:
            idx = fparts.index("G18")
            datestr = fparts[idx+2]
@@ -204,7 +73,6 @@ def getvalidtime(path, ftype, verbose):
            vmo = int(tmpdate.strftime("%m"))
            vda = int(tmpdate.strftime("%d"))
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
-           #print "{}/{}/{}/{}/{}".format(vyr,vmo,vda,vhr,vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
            satellite = ""
@@ -323,10 +191,10 @@ def getvalidtime(path, ftype, verbose):
            satellite = ""        
            sensor = ""
      elif ftype == "dmw":
-        if "S-NPP" in path: 
-         idx = fparts.index("S-NPP")
-         datestr = fparts[idx+1]  
-         timestr = fparts[idx+1] 
+        if "UAF" in path: 
+         idx = fparts.index("UAF")
+         datestr = fparts[idx+4]  
+         timestr = fparts[idx+4] 
          vyr = int(datestr[:4]) 
          vmo = int(datestr[4:6]) 
          vda = int(datestr[6:8])
@@ -335,36 +203,8 @@ def getvalidtime(path, ftype, verbose):
          vtime = datetime(vyr, vmo, vda, vhr, vmn)
          vsecs = int(vtime.strftime("%s"))
          dtstr = vtime.strftime("%y%m%d_%H%M")
-         satellite = "S-NPP"
-         sensor = "VIIRS"
-        elif "NOAA-20" in path:
-         idx = fparts.index("NOAA-20")
-         datestr = fparts[idx+1]  
-         timestr = fparts[idx+1] 
-         vyr = int(datestr[:4]) 
-         vmo = int(datestr[4:6]) 
-         vda = int(datestr[6:8])
-         vhr = int(timestr[9:11])
-         vmn = int(timestr[11:13])
-         vtime = datetime(vyr, vmo, vda, vhr, vmn)
-         vsecs = int(vtime.strftime("%s"))
-         dtstr = vtime.strftime("%y%m%d_%H%M")
-         satellite = "NOAA-20"
-         sensor = "VIIRS"
-        elif "NOAA-21" in path: 
-         idx = fparts.index("NOAA-21")
-         datestr = fparts[idx+1] 
-         timestr = fparts[idx+1] 
-         vyr = int(datestr[:4]) 
-         vmo = int(datestr[4:6]) 
-         vda = int(datestr[6:8])
-         vhr = int(timestr[9:11])
-         vmn = int(timestr[11:13])
-         vtime = datetime(vyr, vmo, vda, vhr, vmn)
-         vsecs = int(vtime.strftime("%s"))
-         dtstr = vtime.strftime("%y%m%d_%H%M")
-         satellite = "NOAA-21"
-         sensor = "VIIRS"
+         satellite = fparts[idx+3]
+         sensor = fparts[idx+1]
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
@@ -419,7 +259,6 @@ def getvalidtime(path, ftype, verbose):
            dtstr = ""
            satellite = ""
            sensor = ""
-     #print(dtstr + ' ' + satellite) # debugging
      return (vsecs, dtstr, satellite, sensor)
 
 def get_passes_by_type(path, ddttstr, sat, snsr, passes):
@@ -428,16 +267,16 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     _, ddttstr, sat, snsr = getvalidtime(path, args.type, args.verbose)
     date = str(ddttstr)[:6]
     time = str(ddttstr)[7:]
-    #print(date + ' ' + time + ' ' + sat) # debugging
     if sat:
         format_pass = f"{date} {time} {sat} {snsr}"
-        if args.match == 'viirs' and snsr != "VIIRS":
-            return passes
-        elif args.match == 'modis' and snsr != "MODIS":
-            return passes
-        elif args.match == 'avhrr' and snsr != "AVHRR":
-            return passes
-        elif format_pass not in passes:
+        conditions = {
+            'viirs': snsr != 'viirs',
+            'modis': snsr != 'viirs',
+            'avhrr': snsr != 'avhrr',
+            'atms': snsr != 'atms',
+            'amhsua-mhs': snsr != 'amhsua-mhs',
+        }
+        if args.match not in conditions or conditions[args.match]:
             passes.append(format_pass)
     return passes
 
@@ -447,7 +286,6 @@ def get_filepaths(directory):
     file_paths = []
     for root, directories, files in os.walk(directory):
         for filename in files:
-            # Join the two strings to form the full path
             filepath = os.path.join(root, filename)
             file_paths.append(filepath)
     return file_paths
