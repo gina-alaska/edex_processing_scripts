@@ -238,7 +238,7 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     date = str(ddttstr)[:6]
     time = str(ddttstr)[7:]
     if sat:
-        format_pass = f"{date} {time} {sat} {snsr}"
+        format_pass = f"{date}\t{time}\t{sat}\t\t{snsr}"
         conditions = {
             'viirs': snsr == 'viirs',
             'modis': snsr == 'modis',
@@ -250,6 +250,7 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
             'amsua-mhs': snsr == 'amsua-mhs'
         }
         if args.match not in conditions or conditions[args.match]:
+            format_pass = f"{date}\t{time}\t{sat}\t\t{snsr}"
             passes.append(format_pass)
     return passes
 
@@ -340,6 +341,8 @@ def main():
     if args.passesonly:
         unique_passes = sorted(unique_passes)
         if unique_passes:
+            print("Date\tTime\tSatellite\tSensor")
+            print("----\t----\t---------\t------")
             print('\n'.join(unique_passes))
     if count > 0:
         file_times.sort()
@@ -347,7 +350,7 @@ def main():
            for ddttstr in file_times:
                print("{}".format(passes))
         avglatency = sumlatency / count
-        print("Products found: {}".format(count))
+        print("\nProducts found: {}".format(count))
         print("Avg latency = {:.1f} min".format(avglatency))
         print("Max latency = {:d} min".format(maxlatency))
         print("Min latency = {:d} min".format(minlatency))
