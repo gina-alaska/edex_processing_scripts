@@ -31,7 +31,8 @@ satellites = {
     "noaa19": "noaa19",
     "noaa18": "noaa18",
     "metopc": "metopc",
-    "metopb": "metopb"
+    "metopb": "metopb",
+    "npp": "s-npp"
 }
 
 def getvalidtime(path, ftype, verbose):
@@ -75,14 +76,10 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = ""
-           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
-           dtstr = ""
-           satellite = ""
      elif ftype == "regionalsat":
         if "sport" in path:
            idx = fparts.index("sport")
@@ -96,8 +93,6 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = ""
-           sensor = ""
         elif "VSCD-AK" in path:
            idx = fparts.index("VIIRS")
            datestr = fparts[idx+1]
@@ -110,8 +105,6 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = ""
-           sensor = "VIIRS"
         elif "RIVER" in path:
            idx = fparts.index("1KM")
            datestr = fparts[idx+2]
@@ -124,14 +117,11 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = ""
-           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
-           satellite = ""
      elif ftype == "nucaps":
         pathparts=path.split('/')
         pdx = pathparts.index("nucaps")
@@ -146,8 +136,6 @@ def getvalidtime(path, ftype, verbose):
         vtime = datetime(vyr, vmo, vda, vhr, vmn)
         vsecs = int(vtime.strftime("%s"))
         dtstr = vtime.strftime("%y%m%d_%H%M")
-        satellite = ""
-        sensor = ""
      elif ftype == "pointset":
         if "v2r2" in path:
            idx = fparts.index("v2r2")
@@ -160,15 +148,11 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = ""
-           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
-           satellite = ""
-           sensor = ""
      elif ftype == "netcdfGrid":
         if "CMORPH2" in path:
            idx = fparts.index("0.05deg-30min")
@@ -181,15 +165,11 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
-           satellite = ""
-           sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""   
-           satellite = ""        
-           sensor = ""
      elif ftype == "dmw":
         if "UAF" in path: 
          idx = fparts.index("UAF")
@@ -210,8 +190,6 @@ def getvalidtime(path, ftype, verbose):
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
-           satellite = ""
-           sensor = ""
      elif ftype == "grib": 
         if "TPW" in path: 
          idx = fparts.index("TPW")
@@ -225,15 +203,11 @@ def getvalidtime(path, ftype, verbose):
          vtime = datetime(vyr, vmo, vda, vhr, vmn)
          vsecs = int(vtime.strftime("%s"))
          dtstr = vtime.strftime("%y%m%d_%H%M")
-         satellite = "grib"
-         sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
-           satellite = ""
-           sensor = ""
      elif ftype == "griddednucaps":  
         if "KNES" in path:
          idx = fparts.index("KNES")
@@ -250,15 +224,11 @@ def getvalidtime(path, ftype, verbose):
          vtime = datetime(vyr, vmo, vda, vhr, vmn)
          vsecs = int(vtime.strftime("%s"))
          dtstr = vtime.strftime("%y%m%d_%H%M")
-         satellite = "KNES"
-         sensor = ""
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
            vsecs = 0
            dtstr = ""
-           satellite = ""
-           sensor = ""
      return (vsecs, dtstr, satellite, sensor)
 
 def get_passes_by_type(path, ddttstr, sat, snsr, passes):
@@ -270,11 +240,14 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     if sat:
         format_pass = f"{date} {time} {sat} {snsr}"
         conditions = {
-            'viirs': snsr != 'viirs',
-            'modis': snsr != 'viirs',
-            'avhrr': snsr != 'avhrr',
-            'atms': snsr != 'atms',
-            'amhsua-mhs': snsr != 'amhsua-mhs',
+            'viirs': snsr == 'viirs',
+            'modis': snsr == 'modis',
+            'avhrr': snsr == 'avhrr',
+            'atms': snsr == 'atms',
+            'cris': snsr == 'cris',
+            'atms': snsr == 'atms',
+            'omps': snsr == 'omps',
+            'amsua-mhs': snsr == 'amsua-mhs'
         }
         if args.match not in conditions or conditions[args.match]:
             passes.append(format_pass)
@@ -382,7 +355,6 @@ def main():
         print("Nothing matches criteria.")
         if unknown > 0:
             print("Unknown products: {}".format(unknown))
-
     return
 
 if __name__ == '__main__':
