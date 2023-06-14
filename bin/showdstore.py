@@ -250,7 +250,7 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
             'amsua-mhs': snsr == 'amsua-mhs'
         }
         if args.match not in conditions or conditions[args.match]:
-            format_pass = f"{date}\t{time}\t{sat}\t\t{snsr}"
+            format_pass = f"{date}\t{time}   {sat}\t {snsr}"
             passes.append(format_pass)
     return passes
 
@@ -341,8 +341,8 @@ def main():
     if args.passesonly:
         unique_passes = sorted(unique_passes)
         if unique_passes:
-            print("Date\tTime\tSatellite\tSensor")
-            print("----\t----\t---------\t------")
+            print("\n Date\tTime  Satellite  Sensor")
+            print("------\t----  ---------  ------")
             print('\n'.join(unique_passes))
     if count > 0:
         file_times.sort()
