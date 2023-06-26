@@ -14,7 +14,8 @@ def _process_command_line():
     parser.add_argument('-d', '--day', action='store', help='day of month to search')
     parser.add_argument('-t', '--type', action='store', default='regionalsat', help='type of file (goesr, grib, nucaps, regionalsat)')
     parser.add_argument('-m', '--match', action='store', help='string pattern to match')
-    parser.add_argument('-lo', '--latencyonly', action='store_true', help='compare file dat and time stamp')
+    parser.add_argument('-lo', '--latencyonly', action='store_true', help='show latency summary')
+    parser.add_argument('-fl', '--filelatency', action='store_true', help='compare file date and time stamp')
     parser.add_argument('-po', '--passesonly', action='store_true', help='show pass time, satellite, and sensor only')
     parser.add_argument('-s', '--tstamp', action='store_true', help='show time stamps only')
     parser.add_argument('-b', '--abbrev', action='store_true', help='abbreviate results')
@@ -27,7 +28,7 @@ satellites = {
     "aqua": "aqua",
     "noaa21": "noaa21",
     "noaa20": "noaa20",
-    "no20": "noaa20",
+    "n20": "n20",
     "noaa19": "noaa19",
     "noaa18": "noaa18",
     "metopc": "metopc",
@@ -62,6 +63,8 @@ def getvalidtime(path, ftype, verbose):
                     idx = fparts.index(keyword)
                     satellite = fparts[idx]
                     sensor = fparts[idx+1]
+                    if satellite == "n20":
+                        satellite = "noaa20"
                     break
         elif "G18" in path:
            idx = fparts.index("G18")
@@ -238,19 +241,11 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     date = str(ddttstr)[:6]
     time = str(ddttstr)[7:]
     if sat:
-        format_pass = f"{date}\t{time}\t{sat}\t\t{snsr}"
-        conditions = {
-            'viirs': snsr == 'viirs',
-            'modis': snsr == 'modis',
-            'avhrr': snsr == 'avhrr',
-            'atms': snsr == 'atms',
-            'cris': snsr == 'cris',
-            'atms': snsr == 'atms',
-            'omps': snsr == 'omps',
-            'amsua-mhs': snsr == 'amsua-mhs'
-        }
-        if args.match not in conditions or conditions[args.match]:
-            format_pass = f"{date}\t{time}   {sat}\t {snsr}"
+        if snsr == args.match:
+            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
+            passes.append(format_pass)
+        elif args.match.startswith(f"{snsr}_"):
+            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
             passes.append(format_pass)
     return passes
 
@@ -301,14 +296,18 @@ def main():
         if args.match:
             if args.match in path:
                 if args.latencyonly:
-                    print("{:d}m {}".format(latency, path))
+                    pass
+                   # print("{:d}m {}".format(latency, path))
                 elif args.tstamp:
                     if ddttstr not in file_times:
                         file_times.append(ddttstr)
                 elif args.passesonly:
-                    unique_passes.update(sorted_passes)
+                    unique_passes.update(sorted_passes)  # Use update instead of sorted_passes
+                elif args.filelatency:
+                    print("{:d}m {}".format(latency, path))
                 else:
-                    print("{}".format(path))
+                    if not args.latencyonly:
+                        print("{}".format(path))
                 if validsecs > 0:
                     sumlatency += latency
                     if latency > maxlatency:
@@ -319,16 +318,16 @@ def main():
                 else:
                     unknown += 1
         else:
-            if args.latencyonly:
+            if args.filelatency:
                 print("{:d}m {}".format(latency, path))
             elif args.tstamp:
                 if ddttstr not in file_times:
                     file_times.append(ddttstr)
             elif args.passesonly:
-                unique_passes.update(sorted_passes)
+                unique_passes.update(sorted_passes)  # Use update instead of sorted_passes
             else:
-                print("{}".format(path))
-                pass
+                if not args.latencyonly:
+                    print("{}".format(path))
             if validsecs > 0:
                 sumlatency += latency
                 if latency > maxlatency:
@@ -338,17 +337,21 @@ def main():
                 count += 1
             else:
                 unknown += 1
+    if args.latencyonly:
+        pass
     if args.passesonly:
         unique_passes = sorted(unique_passes)
         if unique_passes:
             print("\n Date\tTime  Satellite  Sensor")
             print("------\t----  ---------  ------")
-            print('\n'.join(unique_passes))
+            print(''.join(unique_passes))
     if count > 0:
         file_times.sort()
         if args.tstamp and not args.abbrev:
-           for ddttstr in file_times:
-               print("{}".format(passes))
+          print("\n Date\tTime")
+          print("------\t----")
+          for ddttstr in file_times:
+               print(f"{ddttstr[:6]}  {ddttstr[7:]}".format(file_times))
         avglatency = sumlatency / count
         print("\nProducts found: {}".format(count))
         print("Avg latency = {:.1f} min".format(avglatency))
@@ -358,7 +361,6 @@ def main():
         print("Nothing matches criteria.")
         if unknown > 0:
             print("Unknown products: {}".format(unknown))
-    return
-
+            
 if __name__ == '__main__':
     main()
