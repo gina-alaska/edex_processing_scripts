@@ -241,10 +241,13 @@ def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     date = str(ddttstr)[:6]
     time = str(ddttstr)[7:]
     if sat:
-        if snsr == args.match:
+        if args.match is None:
             format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
             passes.append(format_pass)
         elif args.match.startswith(f"{snsr}_"):
+            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
+            passes.append(format_pass)
+        elif args.match == snsr:
             format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
             passes.append(format_pass)
     return passes
@@ -304,7 +307,7 @@ def main():
                 elif args.passesonly:
                     unique_passes.update(sorted_passes)  # Use update instead of sorted_passes
                 elif args.filelatency:
-                    print("{:d}m {}".format(latency, path))
+                    print("{:d}m\t{}".format(latency, path))
                 else:
                     if not args.latencyonly:
                         print("{}".format(path))
@@ -319,7 +322,7 @@ def main():
                     unknown += 1
         else:
             if args.filelatency:
-                print("{:d}m {}".format(latency, path))
+                print("{:d}m\t{}".format(latency, path))
             elif args.tstamp:
                 if ddttstr not in file_times:
                     file_times.append(ddttstr)
