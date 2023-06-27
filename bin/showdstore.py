@@ -356,10 +356,10 @@ def main():
           for ddttstr in file_times:
                print(f"{ddttstr[:6]}  {ddttstr[7:]}".format(file_times))
         avglatency = sumlatency / count
-        print("\nProducts found: {}".format(count))
-        print("Avg latency = {:.1f} min".format(avglatency))
-        print("Max latency = {:d} min".format(maxlatency))
-        print("Min latency = {:d} min".format(minlatency))
+        print("Products found: {}".format(count))
+        print("Average latency: {:.1f} min".format(avglatency))
+        print("Maximum latency: {:d} min".format(maxlatency))
+        print("Minimum latency: {:d} min".format(minlatency))
     else:
         print("Nothing matches criteria.")
         if unknown > 0:
