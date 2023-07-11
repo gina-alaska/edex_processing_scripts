@@ -1,10 +1,22 @@
-#!/usr/bin/env python
+#!/awips2/python/bin/python3
 """Get all the files in datastore netcdf file."""
 
 import argparse
 import os
-import datetime
 from datetime import datetime, timedelta
+
+satellites = {
+    "terra": "terra",
+    "aqua": "aqua",
+    "noaa21": "noaa21",
+    "noaa20": "noaa20",
+    "n20": "n20",
+    "noaa19": "noaa19",
+    "noaa18": "noaa18",
+    "metopc": "metopc",
+    "metopb": "metopb",
+    "npp": "s-npp"
+}
 
 def _process_command_line():
     """Process the command line arguments.
@@ -22,19 +34,6 @@ def _process_command_line():
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose flag')
     args = parser.parse_args()
     return args
-
-satellites = {
-    "terra": "terra",
-    "aqua": "aqua",
-    "noaa21": "noaa21",
-    "noaa20": "noaa20",
-    "n20": "n20",
-    "noaa19": "noaa19",
-    "noaa18": "noaa18",
-    "metopc": "metopc",
-    "metopb": "metopb",
-    "npp": "s-npp"
-}
 
 def getvalidtime(path, ftype, verbose):
      """ extract the valid date and time from the filename. """
@@ -237,7 +236,6 @@ def getvalidtime(path, ftype, verbose):
 def get_passes_by_type(path, ddttstr, sat, snsr, passes):
     """Get passes for a specific file type and date."""
     args = _process_command_line()
-    _, ddttstr, sat, snsr = getvalidtime(path, args.type, args.verbose)
     date = str(ddttstr)[:6]
     time = str(ddttstr)[7:]
     if sat:
@@ -288,6 +286,7 @@ def main():
     maxlatency = 0
     minlatency = 2000
     file_times = []
+    total_size = 0
     unique_passes = set()
     for path in paths:
         savesecs = os.path.getmtime(path)
@@ -296,6 +295,8 @@ def main():
         latency = int((savesecs - validsecs) / 60)
         passes = get_passes_by_type(path, ddttstr, sat, snsr, passes)
         sorted_passes = sorted(passes)  # Sort the passes list in ascending order
+        file_stats = os.stat(path)
+        total_size += file_stats.st_size
         if args.match:
             if args.match in path:
                 if args.latencyonly:
@@ -356,7 +357,9 @@ def main():
           for ddttstr in file_times:
                print(f"{ddttstr[:6]}  {ddttstr[7:]}".format(file_times))
         avglatency = sumlatency / count
+        total_megabytes = total_size / 1048576
         print("Products found: {}".format(count))
+        print("Total file size: {:.2f} MB".format(total_megabytes))
         print("Average latency: {:.1f} min".format(avglatency))
         print("Maximum latency: {:d} min".format(maxlatency))
         print("Minimum latency: {:d} min".format(minlatency))
