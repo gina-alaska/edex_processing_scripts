@@ -359,7 +359,7 @@ def main():
         avglatency = sumlatency / count
         total_gigabytes = total_size / 1073741824
         print("Products found: {}".format(count))
-        print("Total file size: {:.2f} MB".format(total_gigabytes))
+        print("Total file size: {:.2f} GB".format(total_gigabytes))
         print("Average latency: {:.1f} min".format(avglatency))
         print("Maximum latency: {:d} min".format(maxlatency))
         print("Minimum latency: {:d} min".format(minlatency))
