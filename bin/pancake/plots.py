@@ -51,11 +51,11 @@ def plotDataVolume():
     # Customize the plot
     ax.set_title(f"Total NRT Data Volume Received in AWIPS")
     ax.set_xlabel('Date')
-    ax.set_ylabel('Data Volume (MB)')
+    ax.set_ylabel('Data Volume (GB)')
     ax.legend()
     # Format the date on the x-axis
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
@@ -139,7 +139,7 @@ def plotAllLatency():
     ax.set_ylim(0, 100)
     # Format the date on the x-axis
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
@@ -210,7 +210,7 @@ def plotAverageLatency():
     ax.legend()
     # Format the date on the x-axis
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
