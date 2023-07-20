@@ -1,6 +1,5 @@
 #!/awips2/python/bin/python3
 """Get all the files in datastore netcdf file."""
-
 import argparse
 import os
 from datetime import datetime, timedelta
@@ -15,7 +14,7 @@ satellites = {
     "noaa18": "noaa18",
     "metopc": "metopc",
     "metopb": "metopb",
-    "npp": "s-npp"
+    "npp": "s-npp",
 }
 
 def _process_command_line():
@@ -78,6 +77,8 @@ def getvalidtime(path, ftype, verbose):
            vtime = datetime(vyr, vmo, vda, vhr, vmn)
            vsecs = int(vtime.strftime("%s"))
            dtstr = vtime.strftime("%y%m%d_%H%M")
+           satellite = "goes-18"
+           sensor = "abi"
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, path))
@@ -233,22 +234,29 @@ def getvalidtime(path, ftype, verbose):
            dtstr = ""
      return (vsecs, dtstr, satellite, sensor)
 
-def get_passes_by_type(path, ddttstr, sat, snsr, passes):
+#def get_passes_by_type(path, ddttstr, sat, snsr, passes):
+#    """Get passes for a specific file type and date."""
+#    args = _process_command_line()
+#    date = str(ddttstr)[:6]
+#    time = str(ddttstr)[7:]
+#    if sat:
+#        if args.match is None:
+#            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
+#            passes.append(format_pass)
+#        elif args.match.startswith(f"{snsr}_"):
+#            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
+#            passes.append(format_pass)
+#        elif args.match == snsr:
+#            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
+#            passes.append(format_pass)
+#    return passes
+
+def format_pass(path, ddttstr, sat, snsr):
     """Get passes for a specific file type and date."""
-    args = _process_command_line()
     date = str(ddttstr)[:6]
     time = str(ddttstr)[7:]
-    if sat:
-        if args.match is None:
-            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
-            passes.append(format_pass)
-        elif args.match.startswith(f"{snsr}_"):
-            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
-            passes.append(format_pass)
-        elif args.match == snsr:
-            format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
-            passes.append(format_pass)
-    return passes
+    format_pass = f"{date}\t{time}  {sat}\t {snsr}\n"
+    return format_pass
 
 
 def get_filepaths(directory):
@@ -293,58 +301,37 @@ def main():
         savetime = datetime.fromtimestamp(savesecs)
         validsecs, ddttstr, sat, snsr = getvalidtime(path, args.type, args.verbose)
         latency = int((savesecs - validsecs) / 60)
-        passes = get_passes_by_type(path, ddttstr, sat, snsr, passes)
-        sorted_passes = sorted(passes)  # Sort the passes list in ascending order
+        ####passes = get_passes_by_type(path, ddttstr, sat, snsr, passes)
+        ####sorted_passes = sorted(passes)  # Sort the passes list in ascending order
         file_stats = os.stat(path)
         total_size += file_stats.st_size
         if args.match:
-            if args.match in path:
-                if args.latencyonly:
-                    pass
-                   # print("{:d}m {}".format(latency, path))
-                elif args.tstamp:
-                    if ddttstr not in file_times:
-                        file_times.append(ddttstr)
-                elif args.passesonly:
-                    unique_passes.update(sorted_passes)  # Use update instead of sorted_passes
-                elif args.filelatency:
-                    print("{:d}m\t{}".format(latency, path))
-                else:
-                    if not args.latencyonly:
-                        print("{}".format(path))
-                if validsecs > 0:
-                    sumlatency += latency
-                    if latency > maxlatency:
-                        maxlatency = latency
-                    if latency < minlatency:
-                        minlatency = latency
-                    count += 1
-                else:
-                    unknown += 1
+            if args.match not in path:
+                continue
+        if args.filelatency:
+            print("{:d}m\t{}".format(latency, path))
+        elif args.tstamp:
+            if ddttstr not in file_times:
+                file_times.append(ddttstr)
+        elif args.passesonly:
+            passes.append(format_pass(path, ddttstr, sat, snsr))
+                ####unique_passes.update(sorted_passes)  # Use update instead of sorted_passes
         else:
-            if args.filelatency:
-                print("{:d}m\t{}".format(latency, path))
-            elif args.tstamp:
-                if ddttstr not in file_times:
-                    file_times.append(ddttstr)
-            elif args.passesonly:
-                unique_passes.update(sorted_passes)  # Use update instead of sorted_passes
-            else:
-                if not args.latencyonly:
-                    print("{}".format(path))
-            if validsecs > 0:
-                sumlatency += latency
-                if latency > maxlatency:
-                    maxlatency = latency
-                if latency < minlatency:
-                    minlatency = latency
-                count += 1
-            else:
-                unknown += 1
+            if not args.latencyonly:
+                print("{}".format(path))
+        if validsecs > 0:
+            sumlatency += latency
+            if latency > maxlatency:
+                maxlatency = latency
+            if latency < minlatency:
+                minlatency = latency
+            count += 1
+        else:
+            unknown += 1
     if args.latencyonly:
         pass
     if args.passesonly:
-        unique_passes = sorted(unique_passes)
+        unique_passes = sorted(set(passes))  # Sort passes and make unique
         if unique_passes:
             print("\n Date\tTime  Satellite  Sensor")
             print("------\t----  ---------  ------")
