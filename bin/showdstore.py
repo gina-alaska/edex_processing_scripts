@@ -303,11 +303,11 @@ def main():
         latency = int((savesecs - validsecs) / 60)
         ####passes = get_passes_by_type(path, ddttstr, sat, snsr, passes)
         ####sorted_passes = sorted(passes)  # Sort the passes list in ascending order
-        file_stats = os.stat(path)
-        total_size += file_stats.st_size
         if args.match:
             if args.match not in path:
                 continue
+            file_stats = os.stat(path)
+            total_size += file_stats.st_size
         if args.filelatency:
             print("{:d}m\t{}".format(latency, path))
         elif args.tstamp:
