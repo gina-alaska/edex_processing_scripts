@@ -306,8 +306,8 @@ def main():
         if args.match:
             if args.match not in path:
                 continue
-            file_stats = os.stat(path)
-            total_size += file_stats.st_size
+        file_stats = os.stat(path)
+        total_size += file_stats.st_size
         if args.filelatency:
             print("{:d}m\t{}".format(latency, path))
         elif args.tstamp:
