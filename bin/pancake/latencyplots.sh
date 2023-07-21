@@ -7,3 +7,8 @@ current_date=$(date -d "1 day ago" +%Y%m%d)
 scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/avhrrlatency.csv /mnt/noaa-case-study-data/latencystats/outputs/avhrr/avhrr_"$current_date".csv
 scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/modislatency.csv /mnt/noaa-case-study-data/latencystats/outputs/modis/modis_"$current_date".csv
 scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/viirslatency.csv /mnt/noaa-case-study-data/latencystats/outputs/viirs/viirs_"$current_date".csv
+scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/datatype_totals/dmw.csv /mnt/noaa-case-study-data/latencystats/outputs/daily_totals/dmw/dmw_"$current_date".csv
+scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/datatype_totals/goesr.csv /mnt/noaa-case-study-data/latencystats/outputs/daily_totals/goesr/goesr_"$current_date".csv
+scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/datatype_totals/griddednucaps.csv /mnt/noaa-case-study-data/latencystats/outputs/daily_totals/griddednucaps/griddednucaps_"$current_date".csv
+scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/datatype_totals/pointset.csv /mnt/noaa-case-study-data/latencystats/outputs/daily_totals/pointset/pointset_"$current_date".csv
+scp dmmaltos@edex.x.gina.alaska.edu:/home/dmmaltos/dev/datatype_totals/regionalsat.csv /mnt/noaa-case-study-data/latencystats/outputs/daily_totals/regionalsat/regionalsat_"$current_date".csv
