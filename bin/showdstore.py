@@ -31,6 +31,7 @@ def _process_command_line():
     parser.add_argument('-s', '--tstamp', action='store_true', help='show time stamps only')
     parser.add_argument('-b', '--abbrev', action='store_true', help='abbreviate results')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose flag')
+    parser.add_argument('-e', '--exclude', action='store', help='string pattern to exclude')
     args = parser.parse_args()
     return args
 
@@ -305,6 +306,9 @@ def main():
         ####sorted_passes = sorted(passes)  # Sort the passes list in ascending order
         if args.match:
             if args.match not in path:
+                continue
+        if args.exclude:
+            if args.exclude in path:
                 continue
         file_stats = os.stat(path)
         total_size += file_stats.st_size
