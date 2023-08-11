@@ -3,12 +3,15 @@
 if [[ "$1"X = X ]]
 then
    echo ""
-   echo "No pathname defined!" 
-   echo ""
-   echo "Syntax: $0 pathname"
-   exit
+   echo "No pathname defined! Using current directory"
+   path=`pwd`
+   path="$path/"
+   #echo ""
+   #echo "Syntax: $0 pathname"
+   #exit
+else
+   path="$1/"
 fi
-path="$1/"
 hostnm=`hostname`
 if [ "$hostnm" = "edex.x.gina.alaska.edu" ]
 then
