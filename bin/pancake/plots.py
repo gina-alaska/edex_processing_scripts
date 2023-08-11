@@ -11,9 +11,11 @@ def plotDataVolume():
     modis_path = "outputs/modis/"
     avhrr_path = "outputs/avhrr/"
     viirs_path = "outputs/viirs/"
+    mosaic_path = "outputs/mosaic/"
     df_modis_list = []
     df_avhrr_list = []
     df_viirs_list = []
+    df_mosaic_list = []
     current_date = datetime.now().date() - timedelta(days=1)
     for file in glob.glob(modis_path + "*.csv"):
         df_modis = pd.read_csv(file, parse_dates=['date'])
@@ -27,21 +29,30 @@ def plotDataVolume():
         df_viirs = pd.read_csv(file, parse_dates=['date'])
         if 'total_filesize' in df_viirs.columns:
             df_viirs_list.append(df_viirs)
+    for file in glob.glob(mosaic_path + "*.csv"):
+        df_mosaic = pd.read_csv(file, parse_dates=['date'])
+        if 'total_filesize' in df_mosaic.columns:
+            df_mosaic_list.append(df_mosaic)
     df_modis = pd.concat(df_modis_list)
     df_avhrr = pd.concat(df_avhrr_list)
     df_viirs = pd.concat(df_viirs_list)
+    df_mosaic = pd.concat(df_mosaic_list)
     df_modis = df_modis.drop_duplicates(subset='date')
     df_avhrr = df_avhrr.drop_duplicates(subset='date')
     df_viirs = df_viirs.drop_duplicates(subset='date')
+    df_mosaic = df_mosaic.drop_duplicates(subset='date')
     df_modis.sort_values(by='date', inplace=True)
     df_avhrr.sort_values(by='date', inplace=True)
     df_viirs.sort_values(by='date', inplace=True)
+    df_mosaic.sort_values(by='date', inplace=True)
     modis_dates = df_modis['date']
     modis_data = df_modis['total_filesize']
     avhrr_dates = df_avhrr['date']
     avhrr_data = df_avhrr['total_filesize']
     viirs_dates = df_viirs['date']
     viirs_data = df_viirs['total_filesize']
+    mosaic_dates = df_mosaic['date']
+    mosaic_data = df_mosaic['total_filesize']
     # Plotting
     fig, ax = plt.subplots()
     if not df_modis.empty:
@@ -50,11 +61,14 @@ def plotDataVolume():
         ax.plot(avhrr_dates, avhrr_data, label='AVHRR')
     if not df_viirs.empty:
         ax.plot(viirs_dates, viirs_data, label='VIIRS')
+    if not df_mosaic.empty:
+        ax.plot(mosaic_dates, mosaic_data, label='MOSAIC')
     # Customize the plot
     ax.set_title(f"Total NRT Data Volume Received in AWIPS")
     ax.set_xlabel('Date')
     ax.set_ylabel('Data Volume (GB)')
     ax.legend()
+    ax.set_ylim(0, 50)
     # Format the date on the x-axis
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
@@ -62,7 +76,7 @@ def plotDataVolume():
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
     # Generate the filename with the current date - 1
-    filename = f"data_volume_{current_date.strftime('%Y%m%d')}.png"
+    filename = f"goesr_data_volume.png"
     # Specify the directory path
     directory = "plots/avm/data_volume/"
     # Create the directory if it doesn't exist
@@ -155,7 +169,7 @@ def plotDailyTotalsDataVolumeSeperate():
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
     # Generate the filename with the current date - 1
-    filename = f"datatype_totals_data_volume_seperate_{current_date.strftime('%Y%m%d')}.png"
+    filename = f"datatype_totals_data_volume_seperate.png"
     # Specify the directory path
     directory = "plots/datatype_totals_data_volume_seperate/"
     # Create the directory if it doesn't exist
@@ -215,6 +229,16 @@ def plotDailyTotalsDataVolumeCombined():
     df_griddednucaps.sort_values(by='date', inplace=True)
     df_pointset.sort_values(by='date', inplace=True)
     df_regionalsat.sort_values(by='date', inplace=True)
+    dmw_dates = df_dmw['date']
+    dmw_data = df_dmw['total_filesize']
+    goesr_dates = df_goesr['date']
+    goesr_data = df_goesr['total_filesize']
+    griddednucaps_dates = df_griddednucaps['date']
+    griddednucaps_data = df_griddednucaps['total_filesize']
+    pointset_dates = df_pointset['date']
+    pointset_data = df_pointset['total_filesize']
+    regionalsat_dates = df_regionalsat['date']
+    regionalsat_data = df_regionalsat['total_filesize']
     # Combine all the data frames into a single list
     all_dfs = [df_dmw, df_goesr, df_griddednucaps, df_pointset, df_regionalsat]
     df_combined = pd.DataFrame(columns=['date', 'total_filesize'])
@@ -230,12 +254,22 @@ def plotDailyTotalsDataVolumeCombined():
     # Plotting
     fig, ax = plt.subplots()
     if not df_combined.empty:
-        ax.plot(df_combined['date'], df_combined['total_filesize'], label='Data Volume', color='black')
+        ax.plot(df_combined['date'], df_combined['total_filesize'], label='TOTAL', color='black')
+    if not df_dmw.empty:
+        ax.plot(dmw_dates, dmw_data, label='DMW')
+    if not df_goesr.empty:
+        ax.plot(goesr_dates, goesr_data, label='GOESR')
+    if not df_griddednucaps.empty:
+        ax.plot(griddednucaps_dates, griddednucaps_data, label='GRIDDEDNUCAPS')
+    if not df_pointset.empty:
+        ax.plot(pointset_dates, pointset_data, label='POINTSET')
+    if not df_regionalsat.empty:
+        ax.plot(regionalsat_dates, regionalsat_data, label='REGIONALSAT')
     # Customize the plot
     ax.set_title(f"Total NRT Data Volume Received in AWIPS")
     ax.set_xlabel('Date')
     ax.set_ylabel('Data Volume (GB)')
-    ax.legend()
+    ax.legend(prop={'size': 6})
     # Format the date on the x-axis
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
@@ -244,11 +278,10 @@ def plotDailyTotalsDataVolumeCombined():
     fig.tight_layout(rect=[0, 0.01, 1, 1])
     # Generate the filename with the current date - 1
     current_date = datetime.now().date() - timedelta(days=1)
-    filename = f"datatype_totals_data_volume_combined_{current_date.strftime('%Y%m%d')}.png"
+    filename = f"datatype_totals_data_volume_combined.png"
     # Specify the directory path
     directory = "plots/datatype_totals_data_volume_combined/"
-    # Create the directory if it doesn't exist
-    os.makedirs(directory, exist_ok=True)
+
     # Save the plot as a PNG file in the specified directory
     filepath = os.path.join(directory, filename)
     plt.savefig(filepath)
@@ -260,9 +293,11 @@ def plotAllLatency():
     modis_path = "outputs/modis/"
     avhrr_path = "outputs/avhrr/"
     viirs_path = "outputs/viirs/"
+    mosaic_path = "outputs/mosaic/"
     df_modis_list = []
     df_avhrr_list = []
     df_viirs_list = []
+    df_mosaic_list = []
     current_date = datetime.now().date() - timedelta(days=1)
     for file in glob.glob(modis_path + "*.csv"):
         df_modis = pd.read_csv(file, parse_dates=['date'])
@@ -276,18 +311,25 @@ def plotAllLatency():
         df_viirs = pd.read_csv(file, parse_dates=['date'])
         if 'average_latency' in df_viirs.columns:
             df_viirs_list.append(df_viirs)
+    for file in glob.glob(mosaic_path + "*.csv"):
+        df_mosaic = pd.read_csv(file, parse_dates=['date'])
+        if 'average_latency' in df_mosaic.columns:
+            df_mosaic_list.append(df_mosaic)
     # Concatenate all dataframes into a single dataframe
     df_modis = pd.concat(df_modis_list)
     df_avhrr = pd.concat(df_avhrr_list)
     df_viirs = pd.concat(df_viirs_list)
+    df_mosaic = pd.concat(df_mosaic_list)
     # Drop duplicate values based on the 'date' column
     df_modis = df_modis.drop_duplicates(subset='date')
     df_avhrr = df_avhrr.drop_duplicates(subset='date')
     df_viirs = df_viirs.drop_duplicates(subset='date')
+    df_mosaic = df_mosaic.drop_duplicates(subset='date')
     # Sort the dataframes by date
     df_modis.sort_values(by='date', inplace=True)
     df_avhrr.sort_values(by='date', inplace=True)
     df_viirs.sort_values(by='date', inplace=True)
+    df_mosaic.sort_values(by='date', inplace=True)
     # Extract the desired columns
     modis_dates = df_modis['date']
     modis_avg_data = df_modis['average_latency']
@@ -301,6 +343,10 @@ def plotAllLatency():
     viirs_avg_data = df_viirs['average_latency']
     viirs_min_data = df_viirs['minimum_latency']
     viirs_max_data = df_viirs['maximum_latency']
+    mosaic_dates = df_mosaic['date']
+    mosaic_avg_data = df_mosaic['average_latency']
+    mosaic_min_data = df_mosaic['minimum_latency']
+    mosaic_max_data = df_mosaic['maximum_latency']
     # Plotting
     fig, ax = plt.subplots()
     if not df_modis.empty:
@@ -315,6 +361,10 @@ def plotAllLatency():
         ax.plot(viirs_dates, viirs_avg_data, label='VIIRS (Average)', linestyle='-', color='blue')
         ax.plot(viirs_dates, viirs_min_data, label='VIIRS (Minimum)', linestyle='--', color='blue')
         ax.plot(viirs_dates, viirs_max_data, label='VIIRS (Maximum)', linestyle=':', color='blue')
+    if not df_mosaic.empty:
+        ax.plot(mosaic_dates, mosaic_avg_data, label='MOSAIC (Average)', linestyle='-', color='black')
+        ax.plot(mosaic_dates, mosaic_min_data, label='MOSAIC (Minimum)', linestyle='--', color='black')
+        ax.plot(mosaic_dates, mosaic_max_data, label='MOSAIC (Maximum)', linestyle=':', color='black')
     # Customize the plot
     ax.set_title(f"Total NRT Product Latency: Pass Acquisition to AWIPS Ingest")
     ax.set_xlabel('Date')
@@ -328,7 +378,7 @@ def plotAllLatency():
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
     # Generate the filename with the current date - 1
-    filename = f"all_latency_{current_date.strftime('%Y%m%d')}.png"
+    filename = f"total_nrt_latency.png"
     # Specify the directory path
     directory = "plots/avm/all_latency/"
     # Create the directory if it doesn't exist
@@ -399,7 +449,7 @@ def plotAverageLatency():
     # Adjust the figure layout to increase the bottom margin
     fig.tight_layout(rect=[0, 0.01, 1, 1])
     # Generate the filename with the current date - 1
-    filename = f"average_latency_{current_date.strftime('%Y%m%d')}.png"
+    filename = f"average_latency.png"
     # Specify the directory path
     directory = "plots/avm/average_latency/"
     # Create the directory if it doesn't exist
