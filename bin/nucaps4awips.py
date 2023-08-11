@@ -36,7 +36,7 @@ def wmo_header_block(clat, clon):
     elif ( -35.0 <= clat < 37.0 and 251.0 <= clon < 270.0 ):
           wmostr="IUTN03"
     elif ( 37.0 <= clat <= 75.0 and 251.0 <= clon < 270.0 ):
- 	  wmostr="IUTN04"
+          wmostr="IUTN04"
     elif ( -35.0 <= clat < 42.0 and 220.0 <= clon < 251.0 ):
           wmostr="IUTN05"
     elif ( 42.0 <= clat <= 75.0 and 232.0 <= clon < 251.0 ):
@@ -74,15 +74,15 @@ def fix_nucaps_file(filepath):
     try:
        h5_fh = h5py.File(newfilepath, "a")
     except IOError:
-       print 'Error opening {}'.format(newfilepath)
+       print ('Error opening: {}'.format(newfilepath))
        raise SystemExit
     except OSError:
-       print 'Error accessing {}'.format(newfilepath)
+       print ('Error accessing: {}'.format(newfilepath))
        raise SystemExit
 
     #Change attribute string: time_coverage_end
     attr_value = h5_fh.attrs['time_coverage_start']
-    #print "time cvg = {}".format(attr_value)
+    #print ("time cvg = {}".format(attr_value))
     attr_new = attr_value[0:19]+"Z"
     dom = attr_value[8:10]
     hr = attr_value[11:13]
@@ -97,12 +97,12 @@ def fix_nucaps_file(filepath):
     maxlat = np.max(lats)
     minlon = np.min(lons)
     maxlon = np.max(lons)
-    #print "MxMn lat = {}/{} MxMn lon = {}/{}".format(minlat, maxlat, minlon, maxlon)
+    #print ("MxMn lat = {}/{} MxMn lon = {}/{}".format(minlat, maxlat, minlon, maxlon))
     clat=(minlat + maxlat)/2
     clon=(minlon + maxlon)/2
     if clon < 0.0:
        clon=clon+360
-    #print 'Center lat/lon in 360 framework: {}/{}'.format(clat,clon)
+    #print ('Center lat/lon in 360 framework: {}/{}'.format(clat,clon))
 
     #Change attribute string: time_coverage_end
     attr_value = h5_fh.attrs['time_coverage_end']
@@ -190,7 +190,7 @@ def fix_nucaps_file(filepath):
 
     #headerName = "IUTN06_KNES_{}.hdf.{}".format(ddhhmm,wmoidx)
     headerName = "{}_KNES_{}.hdf.{}".format(wmoblock,ddhhmm,wmoidx)
-    #print "Header = {}".format(headerName)
+    #print ("Header = {}".format(headerName))
     with open(headerName, 'wb') as newfh:
         newfh.write(b'\x01')
         newfh.write(header)
@@ -199,7 +199,7 @@ def fix_nucaps_file(filepath):
            prevfh.close()
         newfh.close()
         os.remove(newfilepath)
-        #print 'awipsfile = ',headerName
+        #print ('awipsfile = ',headerName)
         return headerName
 
 ##############################################################3
@@ -209,15 +209,14 @@ def main():
     args = _process_command_line()
     #
     if not os.path.exists(args.filepath):
-        #print 'File not found: {}'.format(args.filepath)
-        print 'File not found: ',args.filepath
+        print ('File not found: {}'.format(args.filepath))
         raise SystemExit
    
     #newfilepath = '{}.mod'.format(args.filepath) 
     #copy(args.filepath, newfilepath)
     filepath = args.filepath
     newfile= fix_nucaps_file(filepath)
-    print newfile
+    print (newfile)
     return
 
 

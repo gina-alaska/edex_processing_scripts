@@ -45,14 +45,14 @@ def main():
        os.remove(oldlogpath) 
     ###################################
 
-    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
+    print ("------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath))
 
     if not os.path.exists(args.filepath):
-        print "File not found: {}".format(args.filepath)
+        print ("File not found: {}".format(args.filepath))
         raise SystemExit
 
     filepath = args.filepath
-    #print "Valid filepath: {}".format(filepath)
+    #print ("Valid filepath: {}".format(filepath))
 
     ################################################3
     # To stop data flow to AWIPS, uncomment these lines 
@@ -63,7 +63,7 @@ def main():
     # this section is only for support of remote file downloads (i.e. carl)
     #if not os.path.exists(queueDir):
     #   os.makedirs(queueDir)
-    #print "copying {} to {}".format(filepath, queueDir)
+    #print ("copying {} to {}".format(filepath, queueDir))
     #copy(filepath,queueDir)
 
     # look for ".gz" in file path to indicate compression is needed
@@ -82,17 +82,17 @@ def main():
        ##############################################
        #
        # OK, ready to move the file to the ingest directory
-       print "Moving {} to {}".format(filepath, ingestDir)
+       print ("Moving {} to {}".format(filepath, ingestDir))
        try:
           #move(filepath,ingestPath)
           move(filepath,ingestDir)
        except:
-          print "Move to ingest failed. Removing: {}".format(filepath)
+          print ("Move to ingest failed. Removing: {}".format(filepath))
           os.remove(filepath)
        #
     # a file with a UAF prefix and no ".gz" extension is unknown
     else:
-       print "Unrecognized file format: {}".format(filepath)
+       print ("Unrecognized file format: {}".format(filepath))
     #
     return
 

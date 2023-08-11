@@ -11,12 +11,12 @@ import datetime
 from time import strftime
 from datetime import datetime, timedelta
 from pytz import timezone
-from Scientific.IO import NetCDF
+import netCDF4
 
 ################################################################################
 ##  makeMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  beta version: 0.99
+##  version: 2.0
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -66,6 +66,15 @@ class filePart(object):
       # This is for SNPP VIIRS 
       elif fparts[idx+2] == "npp" or fparts[idx+2] == "j01":
          self.parse_viirs(fparts, fplen, idx)
+      # This is for VSCD 
+      elif fparts[idx+2] == "VSCD-AK":
+         self.parse_vscd(fparts, fplen, idx)
+      # This is for V 
+      elif fparts[idx+4] == "SO2INDEX" or fparts[idx+4] == "ASHINDEX":
+         self.parse_viirs_ash(fparts, fplen, idx)
+      # This is for OMPS 
+      elif fparts[idx+2] == "OMPS-AK":
+         self.parse_omps(fparts, fplen, idx)
       # This is for GPM 
       elif fparts[idx+3] == "passiveMicrowave":
             self.parse_gpm(fparts, fplen, idx)
@@ -94,7 +103,7 @@ class filePart(object):
          mmdd = int(tmpdate.strftime("%m%d"))
          self.dstr = '{}{}{}'.format(yr,mmdd,f2parts[3][0:4])
       else: 
-         print "modisicing: ch={}  idx={}".format(self.chnl, idx)
+         print ("modisicing: ch={}  idx={}".format(self.chnl, idx))
          self.date_error()
 
    def parse_avhrr(self, fparts, fplen, idx):
@@ -135,7 +144,6 @@ class filePart(object):
          self.chnl = 0
       if fplen >= 6 + idx:
          self.dstr = '{}{}'.format(fparts[idx],fparts[idx+1][0:4])
-
       else:
          self.date_error()
 
@@ -151,6 +159,47 @@ class filePart(object):
          self.chnl = 0
       if fplen >= 8 + idx:
          self.dstr = '{}{}'.format(fparts[idx+6],fparts[idx+7][0:4])
+      else:
+         self.date_error()
+
+   def parse_omps(self, fparts, fplen, idx):
+      """ parse the viirs file name for information. """
+      omps_dict = {'OZONE':'ozone','UV-AEROSOL':'aerosol','SO2-TRM':'so2',
+            'REFL331':'refl331'}
+      self.stype = "omps"
+      try:
+         self.chnl = omps_dict[fparts[idx+4]]
+      except:
+         self.chnl = 0
+      if fplen >= 7 + idx:
+         self.dstr = '20{}{}'.format(fparts[idx+5],fparts[idx+6][0:4])
+         print ("datestr", self.dstr)
+      else:
+         self.date_error()
+
+   def parse_vscd(self, fparts, fplen, idx):
+      """ parse the vscd file name for information. """
+      vscd_dict = {'RED':'vscdred','GREEN':'vscdgreen','BLUE':'vscdblue'}
+      self.stype = "viirs"
+      try:
+         self.chnl = vscd_dict[fparts[idx+4]]
+      except:
+         self.chnl = 0
+      if fplen >= 8 + idx:
+         self.dstr = '20{}{}'.format(fparts[idx+6],fparts[idx+7][0:4])
+      else:
+         self.date_error()
+
+   def parse_viirs_ash(self, fparts, fplen, idx):
+      """ parse the ash/so2 index file name for information. """
+      vash_dict = {'SO2INDEX':'so2idx','ASHINDEX':'ashidx'}
+      self.stype = "viirs"
+      try:
+         self.chnl = vash_dict[fparts[idx+4]]
+      except:
+         self.chnl = 0
+      if fplen >= 7 + idx:
+         self.dstr = '20{}{}'.format(fparts[idx+5],fparts[idx+6][0:4])
       else:
          self.date_error()
 
@@ -212,7 +261,7 @@ class filePart(object):
       if fplen >= 6 + idx:
          self.dstr = '{}{}'.format(fparts[idx+4],fparts[idx+5][0:4])
       else:
-         print "ch={}  idx={}".format(self.chnl, idx)
+         print ("ch={}  idx={}".format(self.chnl, idx))
          self.date_error()
 
    def parse_mosaicdelta(self, fparts, fplen, idx):
@@ -228,9 +277,9 @@ class filePart(object):
          self.date_error()
 
    def date_error(self):
-         print self.fname
-         print self.stype
-         print "Invalid filedate: {}".format(self.fname)
+         print (self.fname)
+         print (self.stype)
+         print ("Invalid filedate: {}".format(self.fname))
          self.dstr = "199901010000"
    
    def filesecs(self):
@@ -266,12 +315,15 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 0.96-C')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 2.0')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
     parser.add_argument(
-        '-po', '--passonly', action='store_true', default=False, help='pass compositing flag'
+        '-i', '--initialize', action='store_true', default=False, help='initialize mosiac'
+    )
+    parser.add_argument(
+        '-po', '--passonly', action='store_true', default=False, help='use only pass data'
     )
     parser.add_argument(
         '-bh', '--backhrs', type=int, action='store', default=bhrs, 
@@ -299,18 +351,21 @@ def openDestinationFile(destpath, chnlname):
    return the file handle """
    #
    if not os.path.exists(destpath):
-      print "File not found: {}".format(destpath)
+      print ("File not found: {}".format(destpath))
       raise SystemExit
    try:
-      fh_dest = NetCDF.NetCDFFile(destpath, "a")
+      #fh_dest = NetCDF.NetCDFFile(destpath, "a")
+      fh_dest = netCDF4.Dataset(destpath, mode="a", clobber=True)
+      fh_dest.set_auto_scale(False)
+
    except IOError:
-       print 'Error accessing {}'.format(destpath)
+       print ('Error accessing {}'.format(destpath))
        raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(destpath)
+       print ('Error accessing {}'.format(destpath))
        raise SystemExit
    #
-   print "Opening file: {}".format(destpath)
+   print ("Opening file: {}".format(destpath))
    setattr(fh_dest, "satelliteName", "MOSAIC")
    #
    if "mosaicdelta" in destpath:                  # time delta 
@@ -327,39 +382,43 @@ def merge_files(fh_dest, srcpath, destpath):
    the destination file""" 
 #
    if not os.path.exists(srcpath):
-      print "File not found: {}".format(srcpath)
+      print ("File not found: {}".format(srcpath))
       raise SystemExit
    try:
-      fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      #fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      fh_src = netCDF4.Dataset(srcpath, mode="r", clobber=True)
+      fh_src.set_auto_scale(False)
    except IOError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    #
    #
-   print "Overlaying: {} onto {}".format(srcpath,destpath)
+   print ("Overlaying: {} onto {}".format(srcpath,destpath))
    vidsrc = fh_src.variables['image']
    viddest = fh_dest.variables['image']
 
-   pixsrc = vidsrc.getValue()
-   pixdest = viddest.getValue()
+   #pixsrc = vidsrc.getValue()
+   #pixdest = viddest.getValue()
+   pixsrc = vidsrc[:,:]
+   pixdest = viddest[:,:]
    #
    ########  for Debug   #########
    #pixcnt = numpy.sum(pixsrc != 0)
    #if pixcnt > 0:
-   #   print "SOURCE: {} Nonzero pixels".format(pixcnt)
+   #   print ("SOURCE: {} Nonzero pixels".format(pixcnt))
    ###############################
    #
    pixdest = numpy.where(pixsrc != 0, pixsrc, pixdest)
    ########  for Debug   #########
    #pixcnt = numpy.sum(pixdest != 0)
    #if pixcnt > 0:
-   #   print "DESTINATION: {} Nonzero pixels".format(pixcnt)
+   #   print ("DESTINATION: {} Nonzero pixels".format(pixcnt))
    ###############################
    #
-   rtn = viddest.assignValue(pixdest)
+   viddest[:,:] = pixdest
    #
    fh_src.close()
 #####################################################################
@@ -368,25 +427,27 @@ def test_file(srcpath):
    the destination file""" 
 #
    if not os.path.exists(srcpath):
-      print "File not found: {}".format(srcpath)
+      print ("File not found: {}".format(srcpath))
       raise SystemExit
    try:
-      fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      #fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      fh_src = netCDF4.Dataset(srcpath, mode="r", clobber=True)
+      fh_src.set_auto_scale(False)
    except IOError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    #
    #
-   print "TESTING: {}".format(srcpath)
+   print ("TESTING: {}".format(srcpath))
    vidsrc = fh_src.variables['image']
-   pixsrc = vidsrc.getValue()
+   pixsrc = vidsrc[:,:]
    #
    ########  for Debug   #########
    pixcnt = numpy.sum(pixsrc != 0)
-   print "FILE HAS:  {} Nonzero pixels".format(pixcnt)
+   print ("FILE HAS:  {} Nonzero pixels".format(pixcnt))
    #
    fh_src.close()
 
@@ -396,51 +457,56 @@ def merge_delta_files(fh_dest, srcpath, destpath, ageval):
    the destination file"""
 #
    if not os.path.exists(srcpath):
-      print "File not found: {}".format(srcpath)
+      print ("File not found: {}".format(srcpath))
       raise SystemExit
    try:
-      fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      #fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      fh_src = netCDF4.Dataset(srcpath, mode="r", clobber=True)
+      fh_src.set_auto_scale(False)
    except IOError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    #
    #
-   #print "Adding time of file: {} to destination: {}".format(srcpath,destpath)
+   #print ("Adding time of file: {} to destination: {}".format(srcpath,destpath))
    vidsrc = fh_src.variables['image']
    viddest = fh_dest.variables['image']
 
-   pixsrc = vidsrc.getValue()
-   pixdest = viddest.getValue()
+   pixsrc = vidsrc[:,:]
+   pixdest = viddest[:,:]
 
    pixdest = numpy.where(pixsrc != 0, ageval, pixdest)
    pixdest = pixdest.astype(int8)
    #
-   rtn = viddest.assignValue(pixdest)
+   viddest[:,:] = pixdest
    #
    fh_src.close()
    #
 #####################################################################
 def lastdelta(srcpath):
-   """ get the most recent time delta in the new mosaic file""" #
-
+   """ get the most recent time delta in the new mosaic file""" 
+   #
    if not os.path.exists(srcpath):
-      print "File not found: {}".format(srcpath)
+      print ("File not found: {}".format(srcpath))
       raise SystemExit
    try:
-      fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      #fh_src = NetCDF.NetCDFFile(srcpath, "r")
+      fh_src = netCDF4.Dataset(srcpath, mode="r", clobber=True)
+      fh_src.set_auto_scale(False)
    except IOError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    #
    #
    vidsrc = fh_src.variables['image']
-   pixdata = vidsrc.getValue()
+   #pixdata = vidsrc.getValue()
+   pixdata = vidsrc[:,:]
    pixcnt = numpy.sum(pixdata != 0)
    if pixcnt > 0:
       pixmin = numpy.min(pixdata[numpy.nonzero(pixdata)])
@@ -455,22 +521,24 @@ def update_timedelta(fh_dest, srcpath, destpath, pixdel, pixmax):
    """ update the time delta in the new mosaic file""" #
 
    if not os.path.exists(srcpath):
-      print "File not found: {}".format(srcpath)
+      print ("File not found: {}".format(srcpath))
       raise SystemExit
    try:
-      fh_src = NetCDF.NetCDFFile(srcpath, "a")
+      #fh_src = NetCDF.NetCDFFile(srcpath, "a")
+      fh_src = netCDF4.Dataset(srcpath, mode="r", clobber=True)
+      fh_src.set_auto_scale(False)
    except IOError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    except OSError:
-       print 'Error accessing {}'.format(srcpath)
+       print ('Error accessing {}'.format(srcpath))
        raise SystemExit
    #
    #
-   print "Updating time delta: ",destpath
+   print ("Updating time delta: ",destpath)
    vidsrc = fh_src.variables['image']
    viddest = fh_dest.variables['image']
-   pixsrc_c = vidsrc.getValue()
+   pixsrc_c = vidsrc[:,:]
    pixsrc = pixsrc_c.astype(uint8)
    #
    pixmax -= pixdel
@@ -479,7 +547,7 @@ def update_timedelta(fh_dest, srcpath, destpath, pixdel, pixmax):
    pixsrc = numpy.where(pixsrc != 0, pixsrc + pixdel, pixsrc)
    #
    pixsrc_c = pixsrc.astype(int8)
-   rtn = viddest.assignValue(pixsrc_c)
+   viddest[:,:] = pixsrc_c
    #
 #####################################################################
 def dropout_passes(fh_dest, fh_ref):
@@ -489,12 +557,12 @@ def dropout_passes(fh_dest, fh_ref):
    viddest = fh_dest.variables['image']
    vidref = fh_ref.variables['image']
 
-   pixdest = viddest.getValue()
-   pixref = vidref.getValue()
+   pixdest = viddest[:,:]
+   pixref = vidref[:,:]
 
    pixdest = numpy.where(pixref == 0, 0, pixdest)
    #
-   rtn = viddest.assignValue(pixdest)
+   viddest[:,:] = pixdest
    #
 #####################################################################
 def timedif2pixel(secdif):
@@ -505,7 +573,7 @@ def timedif2pixel(secdif):
    tdif = float(secdif)  # csec is current time & fsec is file time
    # short version of eq: pixdif = int((tdif/86400.) * 255.)
    pixdif = int(tdif * .002778)
-   #print "CONVERT TIME TO HRS  secdif={}  tdif={} pdif={}".format(secdif, tdif, pixdif)
+   #print ("CONVERT TIME TO HRS  secdif={}  tdif={} pdif={}".format(secdif, tdif, pixdif))
    # make sure pixel values for time differences fall within limits 
    if pixdif > 255:
       pixdif = 255
@@ -537,9 +605,10 @@ def main():
 
    ##################  Configuration section ########################
    dataStoreDir = "/data_store/manual/regionalsat"  # source for data to mosaic
-   tmpDir = "/data_store/download" # temp storage for building mosaic until moved to ingest
-   #tmpDir = "." # temp storage for building mosaic until moved to ingest
-   #tmpDir = "/tmp" # temp storage for building mosaic until moved to ingest
+   #tmpDir = "/localapps/data/tmp" # temp storage for building mosaic until moved to ingest
+   tmpDir = "/localapps/runtime/satellite/tmp" # temp storage for building mosaic until moved to ingest
+   tmpDir2 = "/data_store/download" # temp storage for building mosaic until moved to ingest
+   #tmpDir2 = "." # temp storage for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
    # Possible mosaicDict bands: .49,.56,.64,.67,.86,1.4,1.6,2.2,3.7,4.0,6.7,7.3,8.6,9.7,10.8,11,12
    # Possible mosaicDict products: tpw,swe,clw,rainrate,seaice,snowcover,sst,ITOP,IBOT,IIND 
@@ -557,6 +626,10 @@ def main():
     #  "clw": ('atms','amsu'),
     #  "rainrate": ('atms','amsu'),
       "gpmrainrate": ('gpm'),
+    #  "vscdred": ('viirs'),
+    #  "vscdgreen": ('viirs'),
+    #  "vscdblue": ('viirs'),
+    #  "ozone": ('omps'),
     #  "seaice": ('atms','amsu'),
     #  "sst": ('viirs','modis','avhrr'),
     #  "ITOP": ('viirsice','modisice'),
@@ -576,6 +649,10 @@ def main():
      "clw": "CLW",
      "rainrate": "rainrate",
      "gpmrainrate": "gpmrainrate",
+     "vscdred": "vscdred",
+     "vscdgreen": "vscdgreen",
+     "vscdblue": "vscdblue",
+     "ozone": "ozone",
      "seaice": "SeaIceConcentration",
      "sst": "SST",
      "ITOP": "Icing Top",
@@ -596,6 +673,10 @@ def main():
       "clw":24,
       "rainrate":12,
       "gpmrainrate":12,
+      "vscdred": 24,
+      "vscdgreen": 24,
+      "vscdblue": 24,
+      "ozone": 24,
       "seaice":24,
       "sst":36,
       "ITOP": 24, 
@@ -604,12 +685,22 @@ def main():
       }
    #################  End configuration ##############################
    #
+   # assign a directory for building the mosaic
+   if os.path.isdir(tmpDir):
+      print ("Tmp directory for building mosaic: {}".format(tmpDir))
+   elif os.path.isdir(tmpDir2):
+      tmpDir = tmpDir2
+      print ("Tmp directory for building mosaic: {}".format(tmpDir))
+   else:
+      tmpDir = "/tmp"
+      print ("Tmp directory for building mosaic: {}".format(tmpDir))
+
    agelimit = 12           # default age limit if not specified in timeDeltaDict
    args = _process_command_line(backhrs)
    if args.backhrs != backhrs:
       backhrs = args.backhrs
       if args.verbose:
-         print "Mosaic time delta redefined: {} hrs".format(args.backhrs)
+         print ("Mosaic time delta redefined: {} hrs".format(args.backhrs))
 
    curtime  = datetime.utcnow()
    backtime  = datetime.utcnow() - timedelta(hours=backhrs)
@@ -618,18 +709,21 @@ def main():
    backsecs = int(backtime.strftime("%s"))
    curddtt = curtime.strftime("%Y%m%d_%H%M")
    if args.verbose:
-      print 'Current time: {0} / secs: {1}'.format(curtime,cursecs)
-      print 'Mosaic start time - minus {0} hrs: {1} / secs: {2}'.format(
-           backhrs,backtime,backsecs)
+      print ('Current time: {0} / secs: {1}'.format(curtime,cursecs))
+      print ('Mosaic start time - minus {0} hrs: {1} / secs: {2}'.format(backhrs,backtime,backsecs))
+   passOnlyFlag = False
+   if args.passonly == True or args.initialize == True:
+      passOnlyFlag = True
+      print("Initialing only with pass data. Ignoring previous mosaics")
 
    all_file_paths = []
    all_file_paths = get_filepaths(dataStoreDir)
 
-   for key, value in mosaicDict.iteritems():
+   for key, value in mosaicDict.items():
       mosaicSensor = value 
       mosaicChl = key
       ageLimit = timeDeltaDict[mosaicChl] * 3600  # hrs converted to secs
-      print 'Mosaic channel: {} using: {} Max age: {}'.format(mosaicChl, mosaicSensor, ageLimit) 
+      print ('Mosaic channel: {} using: {} Max age: {}'.format(mosaicChl, mosaicSensor, ageLimit)) 
       cnt = 0
       mcnt = 0
       mdcnt = 0
@@ -640,7 +734,7 @@ def main():
          # check for zero length files
          if os.stat(path).st_size == 0:
             if args.verbose:
-               print "Zero length file: {}".format(path)
+               print ("Zero length file: {}".format(path))
             continue
          dirpath,dstorefile = os.path.split(path)
          # anything else should be good for composite
@@ -648,44 +742,42 @@ def main():
             thisfile = filePart(dstorefile)
             fname = thisfile.parse_name()
             filesecs = thisfile.filesecs()
-            #print "filesecs={} backsecs={}".format(filesecs, backsecs)
-            #print "sensor={} mosaicsensor={}".format(thisfile.sensor(),mosaicSensor)
-            #print "channel={} mosaicchl={}".format(thisfile.channel(),mosaicChl)
+            #print ("filesecs={} backsecs={}".format(filesecs, backsecs))
+            #print ("sensor={} mosaicsensor={}".format(thisfile.sensor(),mosaicSensor))
+            #print ("channel={} mosaicchl={}".format(thisfile.channel(),mosaicChl))
             # step through "data_store" pathnames and save the recent ones
             # separating mosaic paths from single band paths
             if (thisfile.channel() == mosaicChl):
-               #print "FOUND: {} filesecs={} timedif={}".format(thisfile.channel(), filesecs, filesecs - backsecs)
+               print ("FOUND: {} filesecs={} timedif={}".format(thisfile.channel(), filesecs, filesecs - backsecs))
                if filesecs > backsecs: 
-                  if thisfile.sensor() == "mosaic" and args.passonly == False:
+                  if thisfile.sensor() == "mosaic" and passOnlyFlag == False:
                      if args.verbose:
-                        print "MOSAIC"
+                        print ("MOSAIC")
                      mosaic_paths.append('{0}.{1}'.format(filesecs,path))
                      mcnt += 1
                   elif thisfile.sensor() == "mosaicdelta":
                      if args.verbose:
-                        print "MOSAICDELTA"
+                        print ("MOSAICDELTA")
                      mosaicdel_paths.append('{0}.{1}'.format(filesecs,path))
                      mdcnt += 1
                   elif thisfile.sensor() in mosaicSensor:
                      if args.verbose:
-                        print "SENSOR DATA"
+                        print ("SENSOR DATA")
                      saved_paths.append('{0}.{1}'.format(filesecs,path))
                      cnt += 1
 
       #
       # make sure there are passes to add... otherwise skip to next channel
       if cnt < 1:
-         print "No recent passes found for channel {} - skipping".format(mosaicChl)
+         print ("No recent passes found for channel {} - skipping".format(mosaicChl))
          continue
-      
+   
       # create a name for the new mosaic image file
-      mosaicPathname="{0}/Alaska_UAF_AWIPS_mosaic_{1}_{2}.nc".format(
-           tmpDir,mosaicChl,curddtt)
-      print "New mosaic name: ",mosaicPathname
+      mosaicPathname="{0}/Alaska_UAF_AWIPS_mosaic_{1}_{2}.nc".format(tmpDir,mosaicChl,curddtt)
+      print ("New mosaic name: ",mosaicPathname)
       if timeDeltaFlag:
-	   mosaicDelPathname="{0}/Alaska_UAF_AWIPS_mosaicdelta_{1}_{2}.nc".format(
-              tmpDir,mosaicChl,curddtt)
-           print "New mosaic time delta name: ",mosaicDelPathname
+           mosaicDelPathname="{0}/Alaska_UAF_AWIPS_mosaicdelta_{1}_{2}.nc".format(tmpDir,mosaicChl,curddtt)
+           print ("New mosaic time delta name: ",mosaicDelPathname)
 
       # sort the directory list 
       saved_paths.sort()
@@ -696,44 +788,44 @@ def main():
          mosaic_paths.sort(reverse=True)
          prevMosaicPath = mosaic_paths[0].partition(".")
          if args.verbose:
-            print "Updating from previous Mosaic file:\n      {}".format(prevMosaicPath[2])
+            print ("Updating from previous Mosaic file:\n      {}".format(prevMosaicPath[2]))
       else:
          prevMosaicPath = saved_paths[0].partition(".")
          if args.verbose:
-            print "Mosaic file not found! Using latest pass:\n      {}".format(prevMosaicPath[2])
+            print ("Mosaic file not found! Using latest pass:\n      {}".format(prevMosaicPath[2]))
       #
       refsecs = int(prevMosaicPath[0])
       #
       # MOSAIC TIME DELTA - start with latest single band file (attributes will be changed later) 
       prevMosDelPath = saved_paths[0].partition(".")
       if args.verbose:
-         print "Start with regular file:\n      {}".format(prevMosDelPath[2])
+         print ("Start with regular file:\n      {}".format(prevMosDelPath[2]))
       # Use a the modified mosaic name to check if there is a previous delta file to use  
       # instead. If not found, single band file will remain 
       mosDeltaFile = os.path.basename(prevMosaicPath[2]).replace("mosaic","mosaicdelta")
-      # print "SEARCH STRING={}".format(mosDeltaFile)
+      # print ("SEARCH STRING={}".format(mosDeltaFile))
       if mdcnt > 0:
          for pdpath in mosaicdel_paths:
-            #print "pdpath={}".format(os.path.basename(pdpath))
+            #print ("pdpath={}".format(os.path.basename(pdpath))
             if mosDeltaFile == os.path.basename(pdpath):
                # save the previous file as the container for the timedelta mosaic
                prevMosDelPath = pdpath.partition(".")
-               print "Updating from previous Time Delta file:\n      {}".format(prevMosDelPath[2])
+               print ("Updating from previous Time Delta file:\n      {}".format(prevMosDelPath[2]))
                # determine the delta time of the most recent pass in the last mosaic
                offset = lastdelta(prevMosDelPath[2])
-               print "OFFSET={}".format(offset) 
+               print ("OFFSET={}".format(offset)) 
                refsecs -= offset
                break
 
       if args.verbose:
-         print "Reference time: {0} diff from cursecs: {1}".format(refsecs,(cursecs - refsecs))
+         print ("Reference time: {0} diff from cursecs: {1}".format(refsecs,(cursecs - refsecs)))
 
       # check if there is data more recent than the reference file 
       numlast = len(saved_paths) - 1
       firstPassPath = saved_paths[0].partition(".")
       lastPassPath = saved_paths[numlast].partition(".")
       if args.verbose:
-         print "last file: {0} | reference: {1}".format(lastPassPath[0],refsecs)
+         print ("last file: {0} | reference: {1}".format(lastPassPath[0],refsecs))
 
       # Make a copy of the file selected as the starting container for
       # the mosaic with the new mosaic name 
@@ -741,7 +833,7 @@ def main():
          copy(prevMosaicPath[2],mosaicPathname)
          copy(prevMosDelPath[2],mosaicDelPathname)
       else:
-         print "No passes later than last mosaic... skipping"
+         print ("No passes later than last mosaic... skipping")
          continue
 
       # Open destination file and redefine global attributes
@@ -754,7 +846,7 @@ def main():
          pixtimedel = timedif2pixel(cursecs - int(prevMosDelPath[0]))
          pixtdelmax = timedif2pixel(ageLimit) 
          if args.verbose:
-            print "TIMEDELTA={}  MAXDELTA={}".format(pixtimedel, pixtdelmax)
+            print ("TIMEDELTA={}  MAXDELTA={}".format(pixtimedel, pixtdelmax))
          update_timedelta(fh_tdeldest,prevMosDelPath[2],mosaicDelPathname,pixtimedel,pixtdelmax)
 
       ## Now step through the list of more recent single band data
@@ -763,14 +855,14 @@ def main():
          lastPassPath = dspath.partition(".")
          thissecs = int(lastPassPath[0])
          if args.verbose:
-            print "thissecs={}  diff={}".format(thissecs, (thissecs - refsecs))
+            print ("thissecs={}  diff={}".format(thissecs, (thissecs - refsecs)))
          if thissecs >= refsecs:
             #print "MERGING!!!"
             merge_files(fh_dest,lastPassPath[2],mosaicPathname)
             if timeDeltaFlag:
                pixtimedel = timedif2pixel(cursecs - thissecs)
                if args.verbose:
-                  print "TIMEDELTA={} cursecs={} filesecs={}".format(pixtimedel,cursecs,thissecs)
+                  print ("TIMEDELTA={} cursecs={} filesecs={}".format(pixtimedel,cursecs,thissecs))
                merge_delta_files(fh_tdeldest,lastPassPath[2],mosaicDelPathname,pixtimedel)
 
       #
@@ -791,10 +883,10 @@ def main():
       del saved_paths[:]
       del mosaic_paths[:]
 
-      print "Moving {} to {}".format(mosaicPathname, ingestDir)
+      print ("Moving {} to {}".format(mosaicPathname, ingestDir))
       move(mosaicPathname,ingestDir)
       if timeDeltaFlag:
-         print "Moving {} to {}".format(mosaicDelPathname, ingestDir)
+         print ("Moving {} to {}".format(mosaicDelPathname, ingestDir))
          move(mosaicDelPathname,ingestDir)
 
    return   

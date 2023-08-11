@@ -36,15 +36,15 @@ def main():
     queueLimit = 60 
     args = _process_command_line()
 
-    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
+    print ("------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath))
     #
     if not os.path.exists(args.filepath):
-        print "File not found: {}".format(args.filepath)
+        print ("File not found: {}".format(args.filepath))
         raise SystemExit
     #
     filepath = args.filepath
     filenm = os.path.basename(filepath)
-    #print "Valid filepath: {}".format(curtime.strftime("%Y%m"),args.day, filepath)
+    #print ("Valid filepath: {}".format(curtime.strftime("%Y%m"),args.day, filepath))
     #
     ################################################
     statFlag = 0
@@ -57,15 +57,15 @@ def main():
           move(filepath,ingestDir)
           statFlag = 1
        except:
-         print "Move to ingest failed. Removing: {}".format(filepath)
+         print ("Move to ingest failed. Removing: {}".format(filepath))
     # Unknown file format
     else:
-       print "Unrecognized file format Removing: {}".format(filepath)
+       print ("Unrecognized file format Removing: {}".format(filepath))
     if statFlag == 0:
        try:
           os.remove(filepath)
        except:
-         print "Unable to remove: {}".format(filepath)
+         print ("Unable to remove: {}".format(filepath))
     #
     return
 

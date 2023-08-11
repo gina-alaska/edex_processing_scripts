@@ -36,10 +36,10 @@ def main():
     queueLimit = 60 
     args = _process_command_line()
 
-    print "------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath)
+    print ("------\n{}Z {}\nReceived: {}".format(curtime.strftime("%Y%m%d %H%M"), sys.argv[0], args.filepath))
     #
     if not os.path.exists(args.filepath):
-        print "File not found: {}".format(args.filepath)
+        print ("File not found: {}".format(args.filepath))
         raise SystemExit
     #
     filepath = args.filepath
@@ -49,7 +49,7 @@ def main():
     ################################################
     # To stop data flow to AWIPS, uncomment these lines
     if "GEOW_CONUS" in filepath:
-       print "Ignoring Ingest. Removing: {}".format(args.filepath)
+       print ("Ignoring Ingest. Removing: {}".format(args.filepath))
        os.remove(filepath)
        raise SystemExit
 
@@ -61,28 +61,28 @@ def main():
        if "goesr_fog" in basenm or "L2-TURBF-M6" in basenm:
           # OK, ready to move the file to the ingest directory
           if ".nc" in filepath:
-             print "Found SSEC GOES17 product: {}".format(filepath)
+             print ("Found SSEC GOES17 product: {}".format(filepath))
              # OK, ready to move the file to the ingest directory
-             print "Moving {} to {}".format(filepath, ingestDir)
+             print ("Moving {} to {}".format(filepath, ingestDir))
              try:
                 move(filepath,ingestDir)
              except:
-                print "Move to ingest failed. Removing: {}".format(filepath)
+                print ("Move to ingest failed. Removing: {}".format(filepath))
                 os.remove(filepath)
           else:
-             print "Removing text or json files: {}".format(filepath)
+             print ("Removing text or json files: {}".format(filepath))
              os.remove(filepath)
           return
        #
        elif "MIMIC" in basenm:
-          print "File MIMIC file: {}/{}".format(dirnm, basenm)
+          print ("File MIMIC file: {}/{}".format(dirnm, basenm))
           newfilepath="{}/LDADGRIB_{}".format(dirnm, basenm)
        elif "VIIRS-APRFC" in basenm:
           # The "Alaska_" prefix is needed for "regionalsat" format.
-          print "River Ice & Flood product: {}/{}".format(dirnm, basenm)
+          print ("River Ice & Flood product: {}/{}".format(dirnm, basenm))
           newfilepath="{}/Alaska_{}".format(dirnm, basenm)
        else:
-          print "Unrecognized SSEC file type: {}".format(filepath)
+          print ("Unrecognized SSEC file type: {}".format(filepath))
           os.remove(filepath)
           return
        #
@@ -91,31 +91,31 @@ def main():
        s = inF.read()
        inF.close()
        # now write uncompressed result to the new filename
-       outF = file(newfilepath, 'wb')
+       outF = open(newfilepath, 'wb')
        outF.write(s)
        outF.close()
        #
        # make sure the decompression was successful
        if not os.path.exists(newfilepath):
-          print "Decompression failed: {}".format(filepath)
+          print ("Decompression failed: {}".format(filepath))
           raise SystemExit
        #
-       print "File decompressed: {}".format(newfilepath)
+       print ("File decompressed: {}".format(newfilepath))
        # redirected compression copies to a new file so old compressed file needs to be removed
        os.remove(filepath)
        # set the filepath to point to the uncompresses name
        filepath = newfilepath
        # OK, ready to move the file to the ingest directory
-       print "Moving {} to {}".format(filepath, ingestDir)
+       print ("Moving {} to {}".format(filepath, ingestDir))
        try:
           move(filepath,ingestDir)
        except:
-          print "Move to ingest failed. Removing: {}".format(filepath)
+          print ("Move to ingest failed. Removing: {}".format(filepath))
           os.remove(filepath)
        #
     # a file with a UAF prefix and no ".gz" extension is unknown
     else:
-       print "Unrecognized file format: {}".format(filepath)
+       print ("Unrecognized file format: {}".format(filepath))
     #
     return
 
