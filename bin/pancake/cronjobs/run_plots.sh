@@ -8,3 +8,4 @@ cp /mnt/noaa-case-study-data/latencystats/plots/avm/data_volume/goesr_data_volum
 cp /mnt/noaa-case-study-data/latencystats/plots/datatype_totals_data_volume_seperate/datatype_totals_data_volume_seperate.png /mnt/raid/stockpile/distro/stats/awips
 cp /mnt/noaa-case-study-data/latencystats/plots/datatype_totals_data_volume_combined/datatype_totals_data_volume_combined.png /mnt/raid/stockpile/distro/stats/awips
 cp /mnt/noaa-case-study-data/latencystats/plots/avm/all_latency/total_nrt_latency.png /mnt/raid/stockpile/distro/stats/awips
+cp /mnt/noaa-case-study-data/latencystats/plots/avm/all_latency/total_nrt_longwave_ir_bands_latency.png /mnt/raid/stockpile/distro/stats/awips

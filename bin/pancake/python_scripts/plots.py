@@ -1,4 +1,5 @@
 #!/home/dmmaltos/miniconda3/bin/python3
+# Creates plots found at hippy.gina.alaska.edu/distro/stats/awips/
 
 import pandas as pd
 import matplotlib.pyplot as plt
