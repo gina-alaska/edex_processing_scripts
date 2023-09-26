@@ -55,7 +55,7 @@ def plotDataVolume():
     mosaic_dates = df_mosaic['date']
     mosaic_data = df_mosaic['total_filesize']
     # Plotting
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 6))
     if not df_modis.empty:
         ax.plot(modis_dates, modis_data, label='MODIS')
     if not df_avhrr.empty:
@@ -71,7 +71,8 @@ def plotDataVolume():
     ax.legend()
     ax.set_ylim(0, 50)
     # Format the date on the x-axis
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
@@ -147,7 +148,7 @@ def plotDailyTotalsDataVolumeSeperate():
     regionalsat_dates = df_regionalsat['date']
     regionalsat_data = df_regionalsat['total_filesize']
     # Plotting
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 6))
     if not df_dmw.empty:
         ax.plot(dmw_dates, dmw_data, label='DMW')
     if not df_goesr.empty:
@@ -164,7 +165,8 @@ def plotDailyTotalsDataVolumeSeperate():
     ax.set_ylabel('Data Volume (GB)')
     ax.legend()
     # Format the date on the x-axis
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
@@ -253,7 +255,7 @@ def plotDailyTotalsDataVolumeCombined():
     # Sort the combined data frame by date
     df_combined.sort_values(by='date', inplace=True)
     # Plotting
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 6))
     if not df_combined.empty:
         ax.plot(df_combined['date'], df_combined['total_filesize'], label='TOTAL', color='black')
     if not df_dmw.empty:
@@ -272,7 +274,8 @@ def plotDailyTotalsDataVolumeCombined():
     ax.set_ylabel('Data Volume (GB)')
     ax.legend(prop={'size': 6})
     # Format the date on the x-axis
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
@@ -282,7 +285,6 @@ def plotDailyTotalsDataVolumeCombined():
     filename = f"datatype_totals_data_volume_combined.png"
     # Specify the directory path
     directory = "plots/datatype_totals_data_volume_combined/"
-
     # Save the plot as a PNG file in the specified directory
     filepath = os.path.join(directory, filename)
     plt.savefig(filepath)
@@ -349,7 +351,7 @@ def plotAllLatency():
     mosaic_min_data = df_mosaic['minimum_latency']
     mosaic_max_data = df_mosaic['maximum_latency']
     # Plotting
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 6))
     if not df_modis.empty:
         ax.plot(modis_dates, modis_avg_data, label='MODIS (Average)', linestyle='-', color='red')
         ax.plot(modis_dates, modis_min_data, label='MODIS (Minimum)', linestyle='--', color='red')
@@ -371,9 +373,10 @@ def plotAllLatency():
     ax.set_xlabel('Date')
     ax.set_ylabel('Latency (Minutes)')
     ax.legend(prop={'size': 6})
-    ax.set_ylim(0, 100)
+    ax.set_ylim(0, 60)
     # Format the date on the x-axis
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
     fig.autofmt_xdate()  # Auto-format the x-axis date labels
     # Adjust the figure layout to increase the bottom margin
@@ -390,6 +393,89 @@ def plotAllLatency():
     # Display the plot
     plt.show()
 
+def plotLongWaveIR():
+    modis_path = "outputs/longwave_ir/modis/"
+    avhrr_path = "outputs/longwave_ir/avhrr/"
+    viirs_path = "outputs/longwave_ir/viirs/"
+    df_modis_list = []
+    df_avhrr_list = []
+    df_viirs_list = []
+    current_date = datetime.now().date() - timedelta(days=1)
+    for file in glob.glob(modis_path + "*.csv"):
+        df_modis = pd.read_csv(file, parse_dates=['date'])
+        if 'average_latency' in df_modis.columns:
+            df_modis_list.append(df_modis)
+    for file in glob.glob(avhrr_path + "*.csv"):
+        df_avhrr = pd.read_csv(file, parse_dates=['date'])
+        if 'average_latency' in df_avhrr.columns:
+            df_avhrr_list.append(df_avhrr)
+    for file in glob.glob(viirs_path + "*.csv"):
+        df_viirs = pd.read_csv(file, parse_dates=['date'])
+        if 'average_latency' in df_viirs.columns:
+            df_viirs_list.append(df_viirs)
+    # Concatenate all dataframes into a single dataframe
+    df_modis = pd.concat(df_modis_list)
+    df_avhrr = pd.concat(df_avhrr_list)
+    df_viirs = pd.concat(df_viirs_list)
+    # Drop duplicate values based on the 'date' column
+    df_modis = df_modis.drop_duplicates(subset='date')
+    df_avhrr = df_avhrr.drop_duplicates(subset='date')
+    df_viirs = df_viirs.drop_duplicates(subset='date')
+    # Sort the dataframes by date
+    df_modis.sort_values(by='date', inplace=True)
+    df_avhrr.sort_values(by='date', inplace=True)
+    df_viirs.sort_values(by='date', inplace=True)
+    # Extract the desired columns
+    modis_dates = df_modis['date']
+    modis_avg_data = df_modis['average_latency']
+    modis_min_data = df_modis['minimum_latency']
+    modis_max_data = df_modis['maximum_latency']
+    avhrr_dates = df_avhrr['date']
+    avhrr_avg_data = df_avhrr['average_latency']
+    avhrr_min_data = df_avhrr['minimum_latency']
+    avhrr_max_data = df_avhrr['maximum_latency']
+    viirs_dates = df_viirs['date']
+    viirs_avg_data = df_viirs['average_latency']
+    viirs_min_data = df_viirs['minimum_latency']
+    viirs_max_data = df_viirs['maximum_latency']
+    # Plotting
+    fig, ax = plt.subplots(figsize=(12, 6))
+    if not df_modis.empty:
+        ax.plot(modis_dates, modis_avg_data, label='MODIS (Average)', linestyle='-', color='red')
+        ax.plot(modis_dates, modis_min_data, label='MODIS (Minimum)', linestyle='--', color='red')
+        ax.plot(modis_dates, modis_max_data, label='MODIS (Maximum)', linestyle=':', color='red')
+    if not df_avhrr.empty:
+        ax.plot(avhrr_dates, avhrr_avg_data, label='AVHRR (Average)', linestyle='-', color='green')
+        ax.plot(avhrr_dates, avhrr_min_data, label='AVHRR (Minimum)', linestyle='--', color='green')
+        ax.plot(avhrr_dates, avhrr_max_data, label='AVHRR (Maximum)', linestyle=':', color='green')
+    if not df_viirs.empty:
+        ax.plot(viirs_dates, viirs_avg_data, label='VIIRS (Average)', linestyle='-', color='blue')
+        ax.plot(viirs_dates, viirs_min_data, label='VIIRS (Minimum)', linestyle='--', color='blue')
+        ax.plot(viirs_dates, viirs_max_data, label='VIIRS (Maximum)', linestyle=':', color='blue')
+    # Customize the plot
+    ax.set_title(f"Total NRT Longwave IR Bands Latency: Pass Acquisition to AWIPS Ingest")
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Latency (Minutes)')
+    ax.legend(prop={'size': 6})
+    ax.set_ylim(0,50)
+    # Format the date on the x-axis
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
+    fig.tight_layout(rect=[0, 0.01, 1, 1])
+    fig.autofmt_xdate()  # Auto-format the x-axis date labels
+    # Generate the filename with the current date - 1
+    filename = f"total_nrt_longwave_ir_bands_latency.png"
+    # Specify the directory path
+    directory = "plots/avm/all_latency/"
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+    # Save the plot as a PNG file in the specified directory
+    filepath = os.path.join(directory, filename)
+    plt.savefig(filepath)
+    # Display the plot
+    plt.show()
+    
 # Creates plot for average latency
 def plotAverageLatency():
     modis_path = "outputs/modis/"
@@ -467,3 +553,4 @@ plotAverageLatency()
 plotAllLatency()
 plotDailyTotalsDataVolumeSeperate()
 plotDailyTotalsDataVolumeCombined()
+plotLongWaveIR()
