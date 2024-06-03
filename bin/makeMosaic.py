@@ -173,7 +173,6 @@ class filePart(object):
          self.chnl = 0
       if fplen >= 7 + idx:
          self.dstr = '20{}{}'.format(fparts[idx+5],fparts[idx+6][0:4])
-         print ("datestr", self.dstr)
       else:
          self.date_error()
 
@@ -625,11 +624,11 @@ def main():
     #  "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
     #  "rainrate": ('atms','amsu'),
-      "gpmrainrate": ('gpm'),
-    #  "vscdred": ('viirs'),
-    #  "vscdgreen": ('viirs'),
-    #  "vscdblue": ('viirs'),
-    #  "ozone": ('omps'),
+      "gpmrainrate": ('gpm',),
+      "vscdred": ('viirs',),
+      "vscdgreen": ('viirs',),
+      "vscdblue": ('viirs',),
+    #  "ozone": ('omps',),
     #  "seaice": ('atms','amsu'),
     #  "sst": ('viirs','modis','avhrr'),
     #  "ITOP": ('viirsice','modisice'),
@@ -738,7 +737,7 @@ def main():
             continue
          dirpath,dstorefile = os.path.split(path)
          # anything else should be good for composite
-         if "Alaska_UAF" in dstorefile or "AKFB" in dstorefile or "passiveMicrowave" in dstorefile:
+         if "Alaska_UAF" in dstorefile or "passiveMicrowave" in dstorefile:
             thisfile = filePart(dstorefile)
             fname = thisfile.parse_name()
             filesecs = thisfile.filesecs()
@@ -748,7 +747,7 @@ def main():
             # step through "data_store" pathnames and save the recent ones
             # separating mosaic paths from single band paths
             if (thisfile.channel() == mosaicChl):
-               print ("FOUND: {} filesecs={} timedif={}".format(thisfile.channel(), filesecs, filesecs - backsecs))
+               #print ("FOUND: {} filesecs={} timedif={}".format(thisfile.channel(), filesecs, filesecs - backsecs))
                if filesecs > backsecs: 
                   if thisfile.sensor() == "mosaic" and passOnlyFlag == False:
                      if args.verbose:
