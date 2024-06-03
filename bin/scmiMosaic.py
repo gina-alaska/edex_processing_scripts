@@ -16,7 +16,9 @@ import netCDF4
 ################################################################################
 ##  scmiMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  version: 2.00
+##  version  2.00  - revised for python 3 installed in latest AWIPS upgrade 
+##           2.10  - revised to account for format changes with polar2grid 3.0
+##           2.20  - second revision to account for format changes with polar2grid 3.0
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -65,6 +67,8 @@ class filePart(object):
          self.parse_MIRS(fparts,"atms")
       elif "amsua-mhs" in self.fname:
          self.parse_MIRS(fparts,"amsu")
+      elif "amsu-mhs" in self.fname:
+         self.parse_MIRS(fparts,"amsu")
       elif "amsr2" in self.fname:
          self.parse_GAASP(fparts,"amsr2")
       else:
@@ -81,9 +85,9 @@ class filePart(object):
          
    def parse_viirs(self, fparts):
       """ parse the viirs file name for information. """
-      viirs_dict = {'i01':'.64','i02':'.86','i03':'1.6','i04':'3.7','i05':'11',
+      viirs_dict = {'m05':'.64','m07':'.86','m10':'1.6','m12':'3.7','m15':'11',
             'm03':'.49','m04':'.56','m05':'.67','m09':'1.4','m11':'2.2','m13':'4.0',
-            'm14':'8.6','m15':'10.8','m16':'12','dnb':'dnb','sst':'sst'}
+            'm14':'8.6','m16':'12','dnb':'dnb','sst':'sst'}
       #
       self.stype = "viirs"
       ndx = fparts.index("Polar")
@@ -269,7 +273,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 2.0 beta')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 2.20')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -320,6 +324,31 @@ def get_template_path(filepath, sensors, products):
     return ""
 
 #####################################################################
+def initAttributes(srcpath):
+   """ Initialize the destination netcdf file, change attributes, and 
+   return the data array """
+   #
+   global fillvalue
+   #
+   try:
+      ncfh_src = netCDF4.Dataset(srcpath, "r")
+   except IOError:
+      print('ERROR. I/O access to read attributes: {}'.format(srcpath))
+      return (fillvalue)
+   except OSError:
+      print('ERROR. System access to read attributes: {}'.format(srcpath))
+      return (fillvalue)
+   #
+   print ("Default fillvalue = {}".format(fillvalue))
+   dsrc = ncfh_src.variables['data']
+   srcfillvalue = getattr(dsrc, '_FillValue')
+   if srcfillvalue != fillvalue:
+      fillvalue = srcfillvalue
+      print ("**** Using source fillvalue = {}".format(fillvalue))
+   return (fillvalue)
+
+
+#####################################################################
 def createDestinationFile(destpath, chnlname, dname, dunits, fileddtt, xpos, ypos, destval):
    """ Initialize the destination netcdf file, change attributes, and 
    return the data array """
@@ -333,7 +362,7 @@ def createDestinationFile(destpath, chnlname, dname, dunits, fileddtt, xpos, ypo
    #
    try:
       ncfh = netCDF4.Dataset(destpath, mode="w", clobber=True)
-      ncfh.set_auto_scale(False)
+      #ncfh.set_auto_scale(False)
    except IOError:
       print('ERROR. Destination I/O access (init): {}'.format(destpath))
       return np.zeros(1) 
@@ -378,15 +407,24 @@ def createDestinationFile(destpath, chnlname, dname, dunits, fileddtt, xpos, ypo
    setattr(ncfh, 'tile_column_offset', xpos)
    setattr(ncfh, 'tile_row_offset', ypos)
    #
+   #with np.printoptions(threshold=np.inf):
+   #   print (destval)
    setattr(dset, 'coordinates', 'y x')
    setattr(dset, 'units', dunits)
    setattr(dset, 'valid_min', 0)
    setattr(dset, 'valid_max', 32766)
    setattr(dset, 'standard_name', dname)
    setattr(dset, 'grid_mapping', 'polar_projection')
+   #showTileSpecs("BEFORE CONVERT", destval, fillvalue,0)
+   #destval = np.where(destval > fillvalue, ((destval*scalefactor)+offset), fillvalue)
+   destval = np.where(destval > fillvalue, ((destval-offset)/scalefactor), fillvalue)
+   destval = destval.astype(int16)
+   #showTileSpecs("AFTER CONVERT", destval, fillvalue,0)
    dset[:,:] = destval
+   ############### NEWVER #############
    setattr(dset, 'scale_factor', scalefactor)
    setattr(dset, 'add_offset', offset)
+   ####################################
    setattr(dset, 'number_product_80', 80)
    #
    setattr(yset, 'units', 'meters')
@@ -515,18 +553,19 @@ def createTimeDelDestinationFile(destpath, chnlname, fileddtt, xpos, ypos, destv
    return
 
 #####################################################################
-def readMosaicFile(srcpath, updateScaleFlag):
+def readMosaicFile(srcpath, autoScaleFlag):
    """ Read the data section of a previous mosaic """
 
    global scalefactor
    global offset
+   global fillvalue
 
    if not os.path.exists(srcpath):
       print("ERROR. File to init destination not found: {}".format(destpath))
       return np.zeros(1) 
    try:
       ncfh = netCDF4.Dataset(srcpath, mode="r", clobber=True)
-      ncfh.set_auto_scale(False)
+      ncfh.set_auto_scale(autoScaleFlag)
    except IOError:
       print('ERROR. Destination I/O access (init): {}'.format(destpath))
       return np.zeros(1) 
@@ -536,12 +575,10 @@ def readMosaicFile(srcpath, updateScaleFlag):
    #
    dsrc = ncfh.variables['data']
    srcval = dsrc[:,:]
-   #print ("**** READING {} ****".format(srcpath))
-   #print (srcval[0:80, 0:25])
-   #srcval = (srcval * scalefactor) + offset
-   if updateScaleFlag:
-      scalefactor = getattr(dsrc, 'scale_factor')
-      offset = getattr(dsrc, 'add_offset')
+   mosfillval = getattr(dsrc, '_FillValue')
+   if mosfillval != fillvalue:
+      fillvalue = mosfillvalue
+      print ("**** Using prev mosaic fillvalue = {}".format(fillvalue))
 
    return srcval
 
@@ -562,7 +599,7 @@ def merge_data(destval, destdelval, srcpath, ageval):
       return (destval, destdelval)
    try:
       ncfh_src = netCDF4.Dataset(srcpath, "r")
-      ncfh_src.set_auto_scale(False)
+      #ncfh_src.set_auto_scale(False)
    except IOError:
       print('ERROR. I/O access of source to merge: {}'.format(srcpath))
       return (destval, destdelval)
@@ -570,52 +607,117 @@ def merge_data(destval, destdelval, srcpath, ageval):
       print('ERROR. System access of source to merge: {}'.format(srcpath))
       return (destval, destdelval)
    #
-   #
+   #showTileSpecs("START DEST", destval, fillvalue,0)
    print("Overlaying Data: {}".format(srcpath))
-   #dsrc = ncfh_src.variables['data'][:]
    dsrc = ncfh_src.variables['data']
    srcval = dsrc[:,:]
    srcscale = getattr(dsrc, 'scale_factor')
    srcoff = getattr(dsrc, 'add_offset')
-   # now compare the number of pixels in this file and resize if necessary
    (xpix,ypix) = srcval.shape
-   #print("This array: {} x {} shape={}   ref array {} x {}".format(xpix, ypix, srcval.shape, xpixels, ypixels))
-   if xpix != xpixels:
-      a = float(xpixels)
-      b = float(xpix)
-      zoomscale = a / b
-      print("********  ZOOMSCALE = {}".format(zoomscale))
-      print("Grid axis = {}. Rescaling by factor of {}".format(xpix, zoomscale))
-      newval = ndimage.zoom(srcval, zoomscale, mode='nearest')
+   #showTileSpecs("START SRC", srcval, fillvalue,0)
+   testval = np.where((srcval > 65530),fillvalue,srcval)
+   #showTileSpecs("TEST SRC", testval, fillvalue,0)
+   #############################################
+   # convert masked array to ndarray
+   srcval = np.ma.getdata(srcval,subok=False)
+   
+   # now compare the number of pixels in this file and resize if necessary
+   ## first check to see if pixel diminsions are off by one
+   if (xpixels - xpix) == 1:
+      print("==> Tile shape revision. Adding one row")
+      newval = np.insert(srcval, 1, srcval[0],axis=0)
       srcval = newval
       (xpix,ypix) = srcval.shape
-      print("Rescaled array: {} x {}".format(xpix, ypix))
-   #
-   srcval = srcval.astype(int16)
-   # convert destval to fit destination scale and offset
-   destvalf = destval.astype(float)
-   srcvalf = srcval.astype(float)
-   cvtscale = srcscale / scalefactor
-   cvtoff = (srcoff - offset) / scalefactor
-   destvalf = np.where(srcval < fillvalue, (srcvalf*cvtscale)+cvtoff, destvalf)
-   destval = destvalf.astype(int16)
+      #showTileSpecs("ADDED ROW", srcval, fillvalue,0)
+   if (ypixels - ypix) == 1:
+      print("==> Tile shape revision. Adding one col")
+      newval = np.insert(srcval, 1, srcval[:,0],axis=1)
+      srcval = newval
+      (xpix,ypix) = srcval.shape
+      #showTileSpecs("ADDED COL", srcval, fillvalue,0)
+   if (xpixels - xpix) == -1:
+      print("Tile shape revision. Removing one column")
+      srcval = srcval[xpixels-1,:] 
+      #showTileSpecs("REMOVE COL", srcval, fillvalue,0)
+   if (ypixels - ypix) == -1:
+      print("Tile shape revision. Removing one row")
+      srcval = srcval[:,ypixels-1] 
+      #showTileSpecs("REMOVE ROW", srcval, fillvalue,0)
+   (xpix,ypix) = srcval.shape
+   srcval = np.where((srcval > 65533),fillvalue,srcval)
+   ## now check to see if pixel diminsions are significantly different requiring rescale
+   if xpix != xpixels or ypix != ypixels:
+      a = float(xpixels)
+      b = float(xpix)
+      zoomxscale = a / b
+      print("********  ZOOMXSCALE = {}".format(zoomxscale))
+      print("Grid axis = {}. Rescaling x by factor of {}".format(xpix, zoomxscale))
+      a = float(ypixels)
+      b = float(ypix)
+      zoomyscale = a / b
+      print("********  ZOOMYSCALE = {}".format(zoomyscale))
+      print("Grid axis = {}. Rescaling y by factor of {}".format(ypix, zoomyscale))
+      maxsrcval = srcval.max()
+      srcval = np.where(srcval > fillvalue, srcval, maxsrcval+1)
+      newval = ndimage.zoom(srcval, zoom=(zoomxscale,zoomyscale), mode='nearest')
+      srcval = newval
+      srcval = np.where(srcval < maxsrcval, srcval, fillvalue)
+      (xpix,ypix) = srcval.shape
+      #showTileSpecs("ZOOMED FINAL", srcval, fillvalue,0)
+   ################################
+   #showTileSpecs("DEST BEFORE MERGE", destval, fillvalue,0)
+   destval = np.where(srcval > fillvalue, srcval, destval)
+   #showTileSpecs("MERGED DESTVAL", destval, fillvalue,0)
+
+   #destval = destvalf.astype(int16)
    # now merge in the new time delta values
    # age values are divided by 10 because file is assigned a scale of 10
+   #showTileSpecs("AGEVAL", destdelval, fillvalue,0)
    destdelval = destdelval.astype(int16)
    ageval = int(ageval / 10)
-   destdelval = np.where(srcval < fillvalue, ageval, destdelval)
-   # age out older pass data
-   maxdelta = ageLimit / 10
-   destdelval = np.where(np.logical_and(destdelval < fillvalue, destdelval > maxdelta), fillvalue,  destdelval)
+   destdelval = np.where(srcval > fillvalue, ageval, destdelval)
+   #showTileSpecs("AGED AGEVAL", destdelval, fillvalue,0)
+   ##############################################
+
+   # reference time delta to age out older pass data
+   (destval,destdelval) = removeOldPixels(destval,destdelval)
+
+   #maxdelta = ageLimit / 10
+   #destdelval = np.where(np.logical_and(destdelval > fillvalue, destdelval > maxdelta), fillvalue,  destdelval)
+   #destdelval = np.where(destdelval > maxdelta, fillvalue,  destdelval)
    # remove pass data where pixels were aged out
-   destval = np.where(destdelval < fillvalue, destval, fillvalue)
+   #destval = np.where(destdelval > fillvalue, destval, fillvalue)
+   #showTileSpecs("AGED DESTVAL", destval, fillvalue,0)
    #
    ncfh_src.close()
    return (destval, destdelval)
-
+#####################################################################
+def showTileSpecs(idtext,aval,fillval,flag):
+    #aval = np.where(aval > fillvalue, aval, 0)
+    print("Array is of type: ", type(aval))
+    maxaval = aval.max()
+    minaval = aval.min()
+    apixcnt = np.sum(aval > fillval)
+    (px,py) = aval.shape
+    print("** {}. MAX={} MIN={} CNT={} SHAPE={}x{}".format(idtext, maxaval, minaval,apixcnt,px,py))
+    if flag == 1:
+       for x in aval:
+          print(x)
+    return
+#####################################################################
+def removeOldPixels(destval,destdelval):
+   global fillvalue
+   global ageLimit
+   #
+   # remove time delta where pixels exceeded age limit
+   maxdelta = ageLimit / 10
+   destdelval = np.where(destdelval > maxdelta, fillvalue,  destdelval)
+   # now remove pass data where pixels were aged out
+   destval = np.where(destdelval > fillvalue, destval, fillvalue)
+   return(destval,destdelval)
 #####################################################################
 def lastdelta(destpath):
-   """ get the most recent time delta in the new mosaic file""" #
+   """ get the most recent time delta in the new mosaic file""" 
    global fillvalue
    #
    if not os.path.exists(destpath):
@@ -637,12 +739,13 @@ def lastdelta(destpath):
    delval = dset[:,:]
    ncfh.close()
    #
-   pixcnt = np.sum(delval != fillvalue)
+   pixcnt = np.sum(delval > fillvalue)
    if pixcnt > 0:
+      delval = np.where(delval > fillvalue, delval, 32767)
       pixmin = np.min(delval) * 10
    else:
       pixmin = 0
-
+   print ("PIXMIN={}".format(pixmin))
    return pixmin 
    #
 #####################################################################
@@ -672,13 +775,13 @@ def main():
     #  ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
-      "3.7" : ('avhrr','modis','viirs'),
+     "3.7" : ('avhrr','modis','viirs'),
     # "6.7" : ('modis',),
       "11" : ('avhrr','modis','viirs'),
       "12" : ('avhrr','modis','viirs'),
       "tpw": ('atms','amsu'),
       "swe": ('atms','amsu'),
-    #  "clw": ('atms','amsu'),
+    # "clw": ('atms','amsu'),
       "rainrate": ('atms','amsu'),
       "sfr": ('atms','amsu'),
       "seaice": ('atms','amsu'),
@@ -778,7 +881,8 @@ def main():
      "6.7" : (700,.00250543,206.19),
      "11" : (700,.00335819,208.0),
      "12" : (700,.00335819,208.0),
-     "tpw": (140,.00117597,5.2),
+     #"tpw": (140,.00117597,5.2),
+     "tpw": (140,.0009869,2.3618),
      "swe": (140,.000484954,0),
      "clw": (140,.000000701947,0),
      "rainrate": (140,.000839236,0),
@@ -793,7 +897,10 @@ def main():
    fileIgnoreList = ["crefl", "viirs_cloud", "viirs_rain", "cld_temp", "cld_reff", 
      "cld_opd", "cld_emiss", "hncc_dnb", "adaptive_dnb", "OT_WCONUS"]
 
-   tileSliceDict = {     # max time (hrs) for passes used in composites for each channel
+   tileSliceDictTest = {  # tile name and block position
+      "TJ04": (3,5),
+   }
+   tileSliceDict = {     # tile name and block position
       "TA01": (0,0),
       "TA02": (1,0),
       "TB01": (2,0),
@@ -886,7 +993,9 @@ def main():
    global ypixels
    global ageLimit
    global gridsize
-
+   #
+   args = _process_command_line(backhrs)
+   #
    if os.path.isdir(tmpDir):
       print("Tmp directory for building mosaic: {}".format(tmpDir))
    elif os.path.isdir(tmpDir2):
@@ -900,8 +1009,8 @@ def main():
    xpixels = 700 
    ypixels = 700 
    gridsize = 1
-   fillvalue = 32767
-   args = _process_command_line(backhrs)
+   #fillvalue = 32767
+   fillvalue = -1
    if args.backhrs != backhrs:
       backhrs = args.backhrs
       if args.verbose:
@@ -1056,7 +1165,7 @@ def main():
          # This section determines if mosaic files are recent enough to reference
          if moscnt > 0 and passOnlyFlag == False:
             if args.verbose:
-               print("Updating from previous Mosaic file:\n      {}".format(prevMosaicPath[2]))
+               print("Updating from previous Mosaic file..")
             foundPrevMosFlag = True
             mosaic_paths.sort(reverse=True)
             prevMosaicPath = mosaic_paths[0].partition(".")
@@ -1107,16 +1216,19 @@ def main():
 
          # If recent previous mosaic files exists read the data arrays
          if foundPrevMosFlag and foundPrevMosDelFlag:
-            destval = readMosaicFile(prevMosaicPath[2],0)
-            destval = destval.astype(int16)
-            tdeldestval = readMosaicFile(prevMosDelPath[2],0)
+            destval = readMosaicFile(prevMosaicPath[2],True)
+            #destval = destval.astype(int16)
+            tdeldestval = readMosaicFile(prevMosDelPath[2],False)
             runtimediff = cursecs - int(prevMosDelPath[0])
             tdelsecs = int(runtimediff / 10)
-            tdeldestval = np.where((tdeldestval < fillvalue),tdeldestval+tdelsecs,tdeldestval)
+            print("===> Previous mosaic exists:  tdelsecs={}".format(tdelsecs))
+            tdeldestval = np.where((tdeldestval > fillvalue),tdeldestval+tdelsecs,tdeldestval)
+            (destval,tdeldestval) = removeOldPixels(destval,tdeldestval)
          # Otherwise start from scratch
-         else: 
+         else:
+            print("===> No previous mosaic: Time reset to zero") 
             destval = np.zeros((xpixels,ypixels))
-            destval = destval.astype(int16)
+            #destval = destval.astype(int16)
             destval.fill(fillvalue)
             tdeldestval = np.zeros((xpixels,ypixels))
             tdeldestval = tdeldestval.astype(int16)
@@ -1125,9 +1237,14 @@ def main():
          ## Now step through the list of more recent single band data
          ## and lay each successive pass over the earlier one
          if passcnt > 0:
+            initFlag = 1
             for dspath in saved_paths:
+               ## read source file attributes 
                lastPassPath = dspath.partition(".")
                thissecs = int(lastPassPath[0])
+               if initFlag == 1:
+                  fillvalue = initAttributes(lastPassPath[2]) 
+                  initFlag = 0
                if args.verbose:
                   print("thissecs={}  diff={}".format(thissecs, (thissecs - refsecs)))
                if thissecs >= refsecs:
@@ -1140,11 +1257,9 @@ def main():
                   print("merge_data({},{},{})".format(lastPassPath[2],mosaicPathname, tdelsecs))
                   (destval,tdeldestval) = merge_data(destval,tdeldestval,lastPassPath[2],tdelsecs)
                   print("*****File Data Merged!!!!!!!")
-                  #print (destval[0:80, 0:25])
-                  #print (tdeldestval[0:80, 0:25])
                #
          # lastly check if the tile has any valid data before creating tile file
-         if (np.count_nonzero(destval < fillvalue)):
+         if (np.count_nonzero(destval > fillvalue)):
             print("Creating mosaic file: {}".format(mosaicPathname))
             createDestinationFile(mosaicPathname, mosaicLabelDict[mosaicChl], dataname, dataunits, curfileddtt, xstart, ystart, destval)
             createTimeDelDestinationFile(mosaicDelPathname, mosaicLabelDict[mosaicChl], curfileddtt, xstart, ystart, tdeldestval)

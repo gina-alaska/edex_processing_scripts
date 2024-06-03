@@ -54,7 +54,7 @@ main() {
    echo ""
    echo "<<<<<<< Creating new SCMI Mosaics - `date` >>>>>>>>"
    #/home/awips/bin/scmiMosaic.py 
-   timeout 60m /home/awips/bin/scmiMosaic.py 
+   timeout 60m /home/awips/bin/scmiMosaic.py
 
    #
    echo "=========== End Mosaic creation - `date` =============="

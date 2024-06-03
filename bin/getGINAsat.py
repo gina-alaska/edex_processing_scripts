@@ -1,9 +1,5 @@
 #!/usr/bin/env /awips2/python/bin/python
 
-<<<<<<< HEAD
-import urllib
-=======
->>>>>>> 1c9d57602131d49629efe5254a5c0dcaca5f1b09
 import urllib.request
 import datetime
 import os, sys
@@ -175,11 +171,7 @@ def main():
                continue
 
          print ("FILENAME={}".format(filename))
-<<<<<<< HEAD
-         urllib.urlretrieve(fileurl, filename)
-=======
          urllib.request.urlretrieve(fileurl, filename)
->>>>>>> 1c9d57602131d49629efe5254a5c0dcaca5f1b09
          if os.path.isfile(filename):
             fsize = os.path.getsize(filename)
             dcount += 1                      
