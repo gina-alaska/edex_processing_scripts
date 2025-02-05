@@ -32,7 +32,7 @@ def main():
     logpath="/opt/ldm/var/logs/edex-ingest-LDMsat-{}.log".format(curtime.strftime("%Y%m%d"))
     sys.stdout = sys.stderr = open(logpath, 'a+')
 
-    ingestDir = "/awips2/edex/data/manual"
+    ingestDir = "/data_store/dropbox"
 
     args = _process_command_line()
 

@@ -65,7 +65,7 @@ def main():
     sys.stdout = sys.stderr = open(logpath, 'a+')
 
     queueLimit = 60 
-    ingestDir = "/awips2/edex/data/manual"
+    ingestDir = "/data_store/dropbox"
 
     args = _process_command_line()
 
