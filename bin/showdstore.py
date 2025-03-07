@@ -166,6 +166,13 @@ def getvalidtime(path, ftype, verbose):
            vsecs,dtstr = parse_file_time(datestr, timestr,4)
            satellite = "multiple"
            sensor = "microwave"
+        elif "AK-SFR" in path:
+           idx = fparts.index("AK-SFR-GRID")
+           datestr = fparts[idx+2][:6]
+           timestr = fparts[idx+2][6:10]
+           vsecs,dtstr = parse_file_time(datestr, timestr,2)
+           satellite = "multiple"
+           sensor = "microwave"
         else:
            if verbose:
               print ("Unknown {} file: {}".format(ftype, fname))
@@ -176,6 +183,13 @@ def getvalidtime(path, ftype, verbose):
         if "fires" in path: 
            idx = fparts.index("fires")
            datestr = fparts[idx+2]  
+           timestr = fparts[idx+2][9:13] 
+           vsecs,dtstr = parse_file_time(datestr, timestr,4)
+           satellite = fparts[idx+3]
+           sensor = fparts[idx+1]
+        elif "DMWF" in path: 
+           idx = fparts.index("L2-DMWF-LEO")
+           datestr = fparts[idx+2][1:9] 
            timestr = fparts[idx+2][9:13] 
            vsecs,dtstr = parse_file_time(datestr, timestr,4)
            satellite = fparts[idx+3]

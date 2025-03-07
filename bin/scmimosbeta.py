@@ -16,9 +16,8 @@ import netCDF4
 ################################################################################
 ##  scmiMosaic.py  - a script for creating mosaic compoites of polar satellite 
 ##                   data.
-##  version  2.00  - revised for python 3 installed in latest AWIPS upgrade 
-##           2.10  - revised to account for format changes with polar2grid 3.0
-##           2.20  - second revision to account for format changes with polar2grid 3.0
+##  version: 2.10  - revised to account for format changes with polar2grid 3.0
+##           2.00  - revised for python 3 installed in latest AWIPS upgrade 
 ################################################################################
 class filePart(object):
    """ simple class for returning satellite file name information """
@@ -85,9 +84,9 @@ class filePart(object):
          
    def parse_viirs(self, fparts):
       """ parse the viirs file name for information. """
-      viirs_dict = {'m05':'.64','m07':'.86','m10':'1.6','m12':'3.7','m15':'11',
+      viirs_dict = {'i01':'.64','i02':'.86','i03':'1.6','i04':'3.7','i05':'11',
             'm03':'.49','m04':'.56','m05':'.67','m09':'1.4','m11':'2.2','m13':'4.0',
-            'm14':'8.6','m16':'12','dnb':'dnb','sst':'sst'}
+            'm14':'8.6','m15':'10.8','m16':'12','dnb':'dnb','sst':'sst'}
       #
       self.stype = "viirs"
       ndx = fparts.index("Polar")
@@ -273,7 +272,7 @@ def _process_command_line(bhrs):
     Return an argparse.parse_args namespace object.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version='%(prog)s ver 2.20')
+    parser.add_argument('--version', action='version', version='%(prog)s ver 2.10')
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='verbose flag'
     )
@@ -339,12 +338,10 @@ def initAttributes(srcpath):
       print('ERROR. System access to read attributes: {}'.format(srcpath))
       return (fillvalue)
    #
-   print ("Default fillvalue = {}".format(fillvalue))
+   print ("**** Default fillvalue = {}".format(fillvalue))
    dsrc = ncfh_src.variables['data']
-   srcfillvalue = getattr(dsrc, '_FillValue')
-   if srcfillvalue != fillvalue:
-      fillvalue = srcfillvalue
-      print ("**** Using source fillvalue = {}".format(fillvalue))
+   fillvalue = getattr(dsrc, '_FillValue')
+   print ("**** New fillvalue = {}".format(fillvalue))
    return (fillvalue)
 
 
@@ -657,13 +654,20 @@ def merge_data(destval, destdelval, srcpath, ageval):
       zoomyscale = a / b
       print("********  ZOOMYSCALE = {}".format(zoomyscale))
       print("Grid axis = {}. Rescaling y by factor of {}".format(ypix, zoomyscale))
-      maxsrcval = srcval.max()
-      srcval = np.where(srcval > fillvalue, srcval, maxsrcval+1)
+      #newval = ndimage.zoom(srcval, zoomscale, mode='nearest')
       newval = ndimage.zoom(srcval, zoom=(zoomxscale,zoomyscale), mode='nearest')
       srcval = newval
-      srcval = np.where(srcval < maxsrcval, srcval, fillvalue)
       (xpix,ypix) = srcval.shape
       #showTileSpecs("ZOOMED FINAL", srcval, fillvalue,0)
+   ############# NEWVER ###########
+   #cvtscale = srcscale / scalefactor
+   #cvtoff = (srcoff - offset) / scalefactor
+   #srcval = srcval.astype(int16)
+   # convert destval to fit destination scale and offset
+   #destvalf = destval.astype(float)
+   #srcvalf = srcval.astype(float)
+   #destvalf = np.where(srcval > fillvalue, (srcvalf*cvtscale)+cvtoff, destvalf)
+   #destvalf = np.where(srcval > fillvalue, srcvalf, destvalf)
    ################################
    #showTileSpecs("DEST BEFORE MERGE", destval, fillvalue,0)
    destval = np.where(srcval > fillvalue, srcval, destval)
@@ -679,14 +683,11 @@ def merge_data(destval, destdelval, srcpath, ageval):
    #showTileSpecs("AGED AGEVAL", destdelval, fillvalue,0)
    ##############################################
 
-   # reference time delta to age out older pass data
-   (destval,destdelval) = removeOldPixels(destval,destdelval)
-
-   #maxdelta = ageLimit / 10
-   #destdelval = np.where(np.logical_and(destdelval > fillvalue, destdelval > maxdelta), fillvalue,  destdelval)
-   #destdelval = np.where(destdelval > maxdelta, fillvalue,  destdelval)
+   # age out older pass data
+   maxdelta = ageLimit / 10
+   destdelval = np.where(np.logical_and(destdelval > fillvalue, destdelval > maxdelta), fillvalue,  destdelval)
    # remove pass data where pixels were aged out
-   #destval = np.where(destdelval > fillvalue, destval, fillvalue)
+   destval = np.where(destdelval > fillvalue, destval, fillvalue)
    #showTileSpecs("AGED DESTVAL", destval, fillvalue,0)
    #
    ncfh_src.close()
@@ -704,17 +705,7 @@ def showTileSpecs(idtext,aval,fillval,flag):
        for x in aval:
           print(x)
     return
-#####################################################################
-def removeOldPixels(destval,destdelval):
-   global fillvalue
-   global ageLimit
-   #
-   # remove time delta where pixels exceeded age limit
-   maxdelta = ageLimit / 10
-   destdelval = np.where(destdelval > maxdelta, fillvalue,  destdelval)
-   # now remove pass data where pixels were aged out
-   destval = np.where(destdelval > fillvalue, destval, fillvalue)
-   return(destval,destdelval)
+
 #####################################################################
 def lastdelta(destpath):
    """ get the most recent time delta in the new mosaic file""" 
@@ -760,8 +751,8 @@ def main():
    ##################  User Configuration Section ########################
    tmpDir = "/localapps/data/tmp" # temp storage for building mosaic until moved to ingest
    #tmpDir = "/localapps/runtime/satellite/tmp" # tmp directory for building mosaic until moved to ingest
-   tmpDir2 = "/data_store/download" # 2nd choice directory for building mosaic until moved to ingest
-   #tmpDir2 = "." # 2nd choice directory for building mosaic until moved to ingest
+   #tmpDir2 = "/data_store/download" # 2nd choice directory for building mosaic until moved to ingest
+   tmpDir2 = "." # 2nd choice directory for building mosaic until moved to ingest
    backhrs = 6             # hours back from current time to check files for composite
    #### NOTE: mosaicDict determines what sensor composites to generate. 
    #          Only uncomment the mosaics that are wanted.
@@ -775,19 +766,19 @@ def main():
     #  ".64" : ('viirs','modis','avhrr'),
     # ".86" : ('viirs','modis'),
     # "1.6" : ('viirs','modis'),
-     "3.7" : ('avhrr','modis','viirs'),
+    # "3.7" : ('avhrr','modis','viirs'),
     # "6.7" : ('modis',),
-     "11" : ('avhrr','modis','viirs'),
-     "12" : ('avhrr','modis','viirs'),
-     "tpw": ('atms','amsu'),
-     "swe": ('atms','amsu'),
-     "clw": ('atms','amsu'),
-     "rainrate": ('atms','amsu'),
-     "sfr": ('atms','amsu'),
-     "seaice": ('atms','amsu'),
+    #  "11" : ('avhrr','modis','viirs'),
+    #  "12" : ('avhrr','modis','viirs'),
+    #  "tpw": ('atms','amsu'),
+    #  "swe": ('atms','amsu'),
+    # "clw": ('atms','amsu'),
+      "rainrate": ('atms','amsu'),
+    #  "sfr": ('atms','amsu'),
+    #  "seaice": ('atms','amsu'),
     #  "snowcover": ('atms','amsu'),
-     "sst": ('viirs','modis','avhrr'),
-     "cldhgt": ('clavrx',),
+    #  "sst": ('viirs','modis','avhrr'),
+    #  "cldhgt": ('clavrx',),
     # "cldbase": ('clavrx',),
    }
    #
@@ -880,11 +871,10 @@ def main():
      "3.7" : (700,.00372337,217.358),
      "6.7" : (700,.00250543,206.19),
      "11" : (700,.00335819,208.0),
-     "12" : (1000,.00335819,208.0),
-     #"tpw": (140,.00117597,5.2),
-     "tpw": (140,.0009869,2.3618),
+     "12" : (700,.00335819,208.0),
+     "tpw": (140,.00117597,5.2),
      "swe": (140,.000484954,0),
-     "clw": (140,.000040,0),
+     "clw": (140,.000000701947,0),
      "rainrate": (140,.000839236,0),
      "sfr": (140,.000839236,0),
      "seaice": (140,.00305194,0),
@@ -897,10 +887,10 @@ def main():
    fileIgnoreList = ["crefl", "viirs_cloud", "viirs_rain", "cld_temp", "cld_reff", 
      "cld_opd", "cld_emiss", "hncc_dnb", "adaptive_dnb", "OT_WCONUS"]
 
-   tileSliceDictTest = {  # tile name and block position
+   tileSliceDict = {  # tile name and block position
       "TJ04": (3,5),
    }
-   tileSliceDict = {     # tile name and block position
+   tileSliceDictOrig = {     # tile name and block position
       "TA01": (0,0),
       "TA02": (1,0),
       "TB01": (2,0),
@@ -1223,7 +1213,6 @@ def main():
             tdelsecs = int(runtimediff / 10)
             print("===> Previous mosaic exists:  tdelsecs={}".format(tdelsecs))
             tdeldestval = np.where((tdeldestval > fillvalue),tdeldestval+tdelsecs,tdeldestval)
-            (destval,tdeldestval) = removeOldPixels(destval,tdeldestval)
          # Otherwise start from scratch
          else:
             print("===> No previous mosaic: Time reset to zero") 
@@ -1267,11 +1256,11 @@ def main():
             #
             print("Moving {} to {}".format(mosaicPathname, ingestDir))
             #copy(mosaicPathname,ingestDir)
-            move(mosaicPathname,ingestDir)
+            #move(mosaicPathname,ingestDir)
             #######################move(mosaicPathname,ingestDir)
             print("Moving {} to {}".format(mosaicDelPathname, ingestDir))
             #copy(mosaicDelPathname,ingestDir)
-            move(mosaicDelPathname,ingestDir)
+            #move(mosaicDelPathname,ingestDir)
             ##########################move(mosaicDelPathname,ingestDir)
          else:
             print("No valid data. Tile skipped!!!!!!!!!!!!!!!!!!!!!!!")

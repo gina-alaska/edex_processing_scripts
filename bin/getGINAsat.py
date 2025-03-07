@@ -7,13 +7,14 @@ import gzip
 from shutil import copy, move, copyfileobj
 import argparse
 from time import strftime
-from HTMLParser import HTMLParser
+#from HTMLParser import HTMLParser
+from html.parser import HTMLParser
 from datetime import datetime, timedelta
-from pytz import timezone
-import numpy
-import netCDF4
-from nucaps4awips import fix_nucaps_file
-from ncImageQC import qc_image_file
+#from pytz import timezone
+#import numpy
+#import netCDF4
+#from nucaps4awips import fix_nucaps_file
+#from ncImageQC import qc_image_file
 
 ##############################################################
 class MyHTMLParser(HTMLParser):
@@ -57,7 +58,9 @@ def _process_command_line():
         help='satellite sensors to download'
     )
     parser.add_argument(
-        '-s', '--satellite', action='store', default='all', help='satellite')
+        '-a', '--antenna', action='store', default='all', help='antenna source')
+    parser.add_argument(
+        '-s', '--satellite', action='store', default='all', help='satellite source')
     parser.add_argument(
         '-m', '--match', action='store', default='', help='match substring in filename')
     parser.add_argument(
@@ -97,9 +100,10 @@ def main():
    ###### definitions base on command line input
    args = _process_command_line()
    verbose = args.verbose      # turns on verbose output
+   antenna = args.antenna      # specifies single satellite platform
    satellite = args.satellite  # specifies single satellite platform
    testsrc = args.test         # directs data requests to test NRT stream
-   matchstr = args.match        # directs data requests to test NRT stream
+   matchstr = args.match       # directs data requests to test NRT stream
    if args.noingest:
       doingest = 0
    else:
@@ -128,10 +132,17 @@ def main():
    for sensor in args.sensor:
       print ("Requesting: {}".format(sensor))
       #
-      if satellite == 'all':
-         listurl = "http://{0}.gina.alaska.edu/products.txt?sensors[]={1}&processing_levels[]={2}&start_date={3}&end_date={4}".format(datasrc, sensor, level, bgnstr, endstr)
-      else:
-         listurl = "http://{0}.gina.alaska.edu/products.txt?satellites[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, satellite, sensor, level, bgnstr, endstr)
+      if antenna == 'all':          # pull from any antenna source
+         if satellite == 'all':     # pull from any satellite source
+            listurl = "http://{0}.gina.alaska.edu/products.txt?sensors[]={1}&processing_levels[]={2}&start_date={3}&end_date={4}".format(datasrc, sensor, level, bgnstr, endstr)
+         else:                      # specify satellite source from any antenna
+            listurl = "http://{0}.gina.alaska.edu/products.txt?satellites[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, satellite, sensor, level, bgnstr, endstr)
+      #
+      else:                         # specify the antenna source
+         if satellite == 'all':     # pull from any satellite source
+            listurl = "http://{0}.gina.alaska.edu/products.txt?facilities[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, antenna, sensor, level, bgnstr, endstr)
+         else:                      # specify the antenna and satellite
+            listurl = "http://{0}.gina.alaska.edu/products.txt?facilities[]={1}&satellites[]={2}&sensors[]={3}&processing_levels[]={4}&start_date={5}&end_date={6}".format(datasrc, antenna, satellite, sensor, level, bgnstr, endstr)
       #
       print ("URL=",listurl)
       sock = urllib.request.urlopen (listurl)
@@ -256,7 +267,7 @@ def main():
                      print ("************  Unable to  move file to ingest: {}".format(filename))
                      continue
                else:
-                  print ("No ingest for {}".format(filename))
+                  print ("No local ingest for {}".format(filename))
                ingcount += 1
                print ("INGEST CNT = {}".format(ingcount))
             #

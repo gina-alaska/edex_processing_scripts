@@ -624,7 +624,7 @@ def main():
     #  "swe": ('atms','amsu'),
     #  "clw": ('atms','amsu'),
     #  "rainrate": ('atms','amsu'),
-      "gpmrainrate": ('gpm',),
+    #  "gpmrainrate": ('gpm',),
       "vscdred": ('viirs',),
       "vscdgreen": ('viirs',),
       "vscdblue": ('viirs',),
