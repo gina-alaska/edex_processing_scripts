@@ -780,7 +780,7 @@ def main():
      "11" : ('avhrr','modis','viirs'),
      "12" : ('avhrr','modis','viirs'),
      "tpw": ('atms','amsu'),
-     "swe": ('atms','amsu'),
+     #"swe": ('atms','amsu'),
      "clw": ('atms','amsu'),
      "rainrate": ('atms','amsu'),
      "sfr": ('atms','amsu'),

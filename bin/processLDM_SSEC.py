@@ -58,10 +58,10 @@ def main():
        dirnm = os.path.dirname(filepath)
        basenm = os.path.splitext(filenm)[0]
        # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if "goesr_fog" in basenm or "L2-TURBF-M6" in basenm:
+       if "goesr_fog" in basenm or "TURB" in basenm:
           # OK, ready to move the file to the ingest directory
           if ".nc" in filepath:
-             print ("Found SSEC GOES17 product: {}".format(filepath))
+             print ("Found SSEC GOES18 product: {}".format(filepath))
              # OK, ready to move the file to the ingest directory
              print ("Moving {} to {}".format(filepath, ingestDir))
              try:
@@ -77,6 +77,9 @@ def main():
        elif "MIMIC" in basenm:
           print ("File MIMIC file: {}/{}".format(dirnm, basenm))
           newfilepath="{}/LDADGRIB_{}".format(dirnm, basenm)
+       elif "NGFS_FIRE" in basenm:
+          print ("NGFS GOES-18 file: {}/{}".format(dirnm, basenm))
+          return
        elif "VIIRS-APRFC" in basenm:
           # The "Alaska_" prefix is needed for "regionalsat" format.
           print ("River Ice & Flood product: {}/{}".format(dirnm, basenm))
