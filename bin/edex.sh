@@ -24,6 +24,7 @@
 #-----------------------------------------------------------------------#
 # ChangeLog                                                             #
 # 07/2011 M.James/Unidata       Created                                 #
+# 10/2025 Carl Dierking		Modified				#
 #-----------------------------------------------------------------------#
 
 # directories definitions
@@ -67,16 +68,7 @@ edex_status() { # report back edex server on/off status
 	echo ''
 	echo '[edex status]'
 	# CHECK POSTGRES
-	postgres_prc=`ps aux | grep postgresql | grep -v grep | awk '{ print $11 }'`
-        postgres_prc=`echo $postgres_prc | cut -f1 -d' '`
-	if [ -z $postgres_prc ]; then
-	#if [ -z $postgres_chk ]; then
-		echo ' postgres    :: not running'
-	else
-		postgresPid=`ps aux | grep postgresql\/bin\/postmaster | grep -v grep | awk '{ print $2 }'`
-		echo ' postgres    :: running :: pid '$postgresPid''
-	fi
-
+	pg_isready && echo "PostgreSQL is running" || echo "PostgreSQL is not running"
 	# CHECK PYPIES
     	pypies_prc=`ps aux | grep httpd_pypies | grep -v grep | head -1 | awk '{ print $11 }'`
     	if [ -z $pypies_prc ]; then
@@ -95,7 +87,7 @@ edex_status() { # report back edex server on/off status
 		echo ' qpid        :: running :: pid '$qpidPid''
 	fi
 
-	# CHECK EDEX
+	# CHECK EDEX INGEST
 	edex_ingest_ps=`ps aux | grep ingest | grep -v ingestGrib | grep -v ingestDat | awk '{ print $15 }'`
 	if [ -z $edex_ingest_ps ]; then
 		echo ' EDEXingest  :: not running'
@@ -104,6 +96,7 @@ edex_status() { # report back edex server on/off status
 		echo ' EDEXingest  :: running :: pid '$edex_ingest_pid''
 	fi
 	
+	# CHECK EDEX GRIB
 	edex_ingestGrib_ps=`ps aux | grep ingestGrib | awk '{ print $15 }'`
 	if [ -z $edex_ingestGrib_ps ]; then
 		echo ' EDEXgrib    :: not running'
@@ -112,6 +105,7 @@ edex_status() { # report back edex server on/off status
 		echo ' EDEXgrib    :: running :: pid '$edex_ingestGrib_pid''
 	fi
 	
+	# CHECK EDEX REQUEST
 	edex_request_ps=`ps aux | grep request | awk '{ print $15 }'`
 	if [ -z $edex_request_ps ]; then
 		echo ' EDEXrequest :: not running'	
@@ -314,21 +308,31 @@ edex_conf_check() { # check that IP and hostname are set correctly. if not, call
 
 edex_start() { # start all edex services
 	#edex_conf_check
-        echo "finished config check"
-	sudo service edex_postgres start
-	sudo service httpd-pypies start
-        echo "postgre started"
-	sudo service qpidd start
+        #echo "finished config check"
+	sudo systemctl start postgresql@awips
+        echo "postgresql started"
+	sudo systemctl start httpd-pypies
+        echo "httpd-pypies started"
+	sudo systemctl start qpidd
         echo "qpidd started"
-	sudo service edex_camel start
+	sudo systemctl start edex_camel.target
+	#sudo systemctl start edex_camel@request
         echo "edex_camel started"
+	sleep 5
+	edex_status;
 }
 
 edex_stop() { # stop all edex services
-	sudo service edex_camel stop
-	sudo service qpidd stop
-	sudo service httpd-pypies stop
-	sudo service edex_postgres stop
+        echo "stopping edex_camel"
+	sudo systemctl stop edex_camel.target
+	#sudo systemctl stop edex_camel@ingest
+	#sudo systemctl stop edex_camel@ingestGrib
+        echo "stopping qpidd"
+	sudo systemctl stop qpidd
+        echo "stopping httpd-pypies"
+	sudo systemctl stop httpd-pypies
+        echo "stopping postgresql"
+	sudo systemctl stop postgresql@awips
 	edex_status;
 }
 

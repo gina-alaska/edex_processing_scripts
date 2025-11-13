@@ -159,10 +159,17 @@ def getvalidtime(path, ftype, verbose):
            dtstr = ""
      ### CMORPH2 data on LatLon Grid
      elif ftype == "netcdfGrid":
-        if "CMORPH2" in path:
+        if "CMORPH2_" in path:
            idx = fparts.index("0.05deg-30min")
            datestr = fparts[idx+1][:8]
            timestr = fparts[idx+1][8:12]
+           vsecs,dtstr = parse_file_time(datestr, timestr,4)
+           satellite = "multiple"
+           sensor = "microwave"
+        elif "CMORPH2x_" in path:
+           idx = fparts.index("0.05deg-HLY")
+           datestr = fparts[idx+2][1:9]
+           timestr = fparts[idx+2][9:13]
            vsecs,dtstr = parse_file_time(datestr, timestr,4)
            satellite = "multiple"
            sensor = "microwave"
@@ -180,7 +187,14 @@ def getvalidtime(path, ftype, verbose):
            dtstr = ""   
      ### VIIRS Active Fire Detections
      elif ftype == "dmw":
-        if "fires" in path: 
+        if "ngfsdmw" in path: 
+           idx = fparts.index("ngfsdmw")
+           datestr = fparts[idx+5]  
+           timestr = fparts[idx+5][9:13] 
+           vsecs,dtstr = parse_file_time(datestr, timestr,4)
+           satellite = fparts[idx][:4]
+           sensor = fparts[idx+3]
+        elif "fires" in path: 
            idx = fparts.index("fires")
            datestr = fparts[idx+2]  
            timestr = fparts[idx+2][9:13] 
@@ -314,7 +328,7 @@ def main():
     if args.day is not None:
         if int(args.day) > 31:
             dom = int(args.day) % 100
-            mon = int(args.day) / 100
+            mon = int(int(args.day) / 100)
             subDir = '{}{:02}{:02}'.format(curtime.strftime("%Y"), mon, dom)
         else:
             subDir = '{}{:02}'.format(curtime.strftime("%Y%m"), int(args.day))

@@ -86,28 +86,17 @@ def main():
     #raise SystemExit
     #
     ##################################
-    # this section is only for support of remote file downloads (i.e. to carl)
-    #queueDir = "/data_store/ldmqueue"
-    #if not os.path.exists(queueDir):
-    #   os.makedirs(queueDir)
-    #   os.chmod(queueDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-    #fnum = len(os.listdir(queueDir))
-    #if fnum < queueLimit:
-    #   print "copying {} to {}".format(filepath, queueDir)
-    #   copy(filepath,queueDir)
-    #   quefilepath = '{}/{}'.format(queueDir, filenm)
-    #   os.chmod(quefilepath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-    #else:
-    #   print "Skip copy. Too many files in queue: {}".format(fnum)
-    ##################################
     prodnames = ['dust.nc','ash.nc','ntmicro.nc','color.nc','airmass.nc','false.nc']
     # look for ".gz" in file path to indicate compression is needed
     if ".gz" in filepath:
        dirnm = os.path.dirname(filepath)
        basenm = os.path.splitext(filenm)[0]
-       #nameseg=basenm.split('_')
-       # use the directory and base to create a new name with "Alaska" prefix and ".nc" extension
-       if ".nc" in basenm:
+       # first check if compress file is grib
+       if ".grb2" in basenm:
+          newfilepath="{}/{}".format(dirnm, basenm)
+       # otherwise use directory/base to create new a name with "Alaska" prefix 
+       # and ".nc" extension
+       elif ".nc" in basenm:
           newfilepath="{}/Alaska_{}".format(dirnm, basenm)
        else:
           newfilepath="{}/Alaska_{}.nc".format(dirnm, basenm)
@@ -129,23 +118,15 @@ def main():
        print ("File decompressed: {}".format(newfilepath))
        # after redirected compression the compressed file needs to be removed
        os.remove(filepath)
-       # set the filepath to point to the uncompresses name
+       # set the filepath to point to the uncompressed name
        filepath = newfilepath
        #
-       # Now the file is uncompressed and renamed with the "Alaska_" prefix.
+       # File is now uncompressed. Netcdf files have the "Alaska_" prefix.
        #############################################
-       # This section is for future tweaks that may be needed (like netcdf attributes).
+       # This section for file tweaks that may be needed (like netcdf attributes).
        if "sfr.nc" in filepath:
           print ("Changing satelliteName to NESDIS POES in file: {}".format(filepath))
           chg_attribute(filepath, "satelliteName", "NESDIS POES", args.verbose)
-       elif "viirs_alaska" in filepath:
-          if any([x in filepath for x in prodnames]):
-             print ("Changing satelliteName to SPORT VIIRS in file: {}".format(filepath))
-             chg_attribute(filepath, "satelliteName", "SPoRT VIIRS", args.verbose)
-       elif "modis_alaska" in filepath:
-          if any([x in filepath for x in prodnames]):
-             print ("Changing satelliteName to SPORT MODIS in file: {}".format(filepath))
-             chg_attribute(filepath, "satelliteName", "SPoRT MODIS", args.verbose)
        # 
        ##############################################
        #
@@ -158,6 +139,15 @@ def main():
           os.remove(filepath)
        #
     # a file with a UAF prefix and no ".gz" extension is unknown
+    elif ".grb2" in filepath:
+       # No decompression needed, ready to move file to the ingest directory
+       print ("Moving {} to {}".format(filepath, ingestDir))
+       try:
+          move(filepath,ingestDir)
+       except:
+          print ("Move to ingest failed. Removing: {}".format(filepath))
+          os.remove(filepath)
+       #
     else:
        print ("Unrecognized file format: {}".format(filepath))
     #

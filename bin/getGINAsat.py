@@ -11,8 +11,8 @@ from time import strftime
 from html.parser import HTMLParser
 from datetime import datetime, timedelta
 #from pytz import timezone
-#import numpy
-#import netCDF4
+import numpy
+import netCDF4
 #from nucaps4awips import fix_nucaps_file
 #from ncImageQC import qc_image_file
 
@@ -54,7 +54,7 @@ def _process_command_line():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'sensor', nargs='+', choices=['viirs','modis','metop','avhrr','atms','amsr2'],
+        'sensor', nargs='+', choices=['viirs','modis','metop','avhrr','atms','amsr2','all'],
         help='satellite sensors to download'
     )
     parser.add_argument(
@@ -66,7 +66,7 @@ def _process_command_line():
     parser.add_argument(
         '-l', '--level', action='store', default='awips', choices=['awips',
         'mirs_awips','mirs_scmi','scmi','sst_awips','nucaps_level2','clavrx_scmi', 
-	'level2','mirs_level2','NucapsAwips'], help='format type')
+	'level2','mirs_level2','NucapsAwips','level1','edr_scmi'], help='format type')
     parser.add_argument(
         '-t', '--test', action='store_true', help='use test NRT data stream')
     parser.add_argument(
@@ -123,7 +123,7 @@ def main():
    endstr = endtime.strftime("%Y-%m-%d+%H%M")
    #print ("format={}  satellite={}".format(level, satellite))
    ######
-   dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0,"atms":0,"amsr2":0}
+   dset_count = {"modis":0,"viirs":0,"avhrr":0,"metop":0,"atms":0,"amsr2":0,"all":0}
    #
    if verbose:
       print ("Dates: ",bgnstr," / ",endstr)
@@ -134,15 +134,21 @@ def main():
       #
       if antenna == 'all':          # pull from any antenna source
          if satellite == 'all':     # pull from any satellite source
-            listurl = "http://{0}.gina.alaska.edu/products.txt?sensors[]={1}&processing_levels[]={2}&start_date={3}&end_date={4}".format(datasrc, sensor, level, bgnstr, endstr)
+            if sensor == 'all':     # pull from any sensor source
+               listurl = "http://{0}.gina.alaska.edu/products.txt?processing_levels[]={1}&start_date={2}&end_date={3}".format(datasrc,level,bgnstr,endstr)
+            else:                      # specify sensor source from any antenna
+               listurl = "http://{0}.gina.alaska.edu/products.txt?sensors[]={1}&processing_levels[]={2}&start_date={3}&end_date={4}".format(datasrc,sensor,level,bgnstr,endstr)
          else:                      # specify satellite source from any antenna
-            listurl = "http://{0}.gina.alaska.edu/products.txt?satellites[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, satellite, sensor, level, bgnstr, endstr)
+            listurl = "http://{0}.gina.alaska.edu/products.txt?satellites[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc,satellite,sensor,level,bgnstr,endstr)
       #
       else:                         # specify the antenna source
          if satellite == 'all':     # pull from any satellite source
-            listurl = "http://{0}.gina.alaska.edu/products.txt?facilities[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc, antenna, sensor, level, bgnstr, endstr)
+            if sensor == 'all':     # pull from any sensor source
+               listurl = "http://{0}.gina.alaska.edu/products.txt?processing_levels[]={1}&start_date={2}&end_date={3}".format(datasrc,level,bgnstr,endstr)
+            else:                      # specify sensor source from any antenna
+               listurl = "http://{0}.gina.alaska.edu/products.txt?facilities[]={1}&sensors[]={2}&processing_levels[]={3}&start_date={4}&end_date={5}".format(datasrc,antenna,sensor,level,bgnstr,endstr)
          else:                      # specify the antenna and satellite
-            listurl = "http://{0}.gina.alaska.edu/products.txt?facilities[]={1}&satellites[]={2}&sensors[]={3}&processing_levels[]={4}&start_date={5}&end_date={6}".format(datasrc, antenna, satellite, sensor, level, bgnstr, endstr)
+            listurl = "http://{0}.gina.alaska.edu/products.txt?facilities[]={1}&satellites[]={2}&sensors[]={3}&processing_levels[]={4}&start_date={5}&end_date={6}".format(datasrc,antenna,satellite,sensor,level,bgnstr,endstr)
       #
       print ("URL=",listurl)
       sock = urllib.request.urlopen (listurl)
