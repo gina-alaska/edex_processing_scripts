@@ -70,24 +70,30 @@ edex_status() { # report back edex server on/off status
 	# CHECK POSTGRES
 	pg_isready && echo "PostgreSQL is running" || echo "PostgreSQL is not running"
 	# CHECK PYPIES
-    	pypies_prc=`ps aux | grep httpd_pypies | grep -v grep | head -1 | awk '{ print $11 }'`
-    	if [ -z $pypies_prc ]; then
-    		echo ' pypies      :: not running'
-    	else
-    		pypiesPid=`ps aux | grep awips2\/httpd_pypies\/usr\/sbin\/httpd | grep -v grep | head -1 | awk '{ print $2 }'`
-    		echo ' pypies      :: running :: pid '$pypiesPid''
-    	fi
+        echo "Checking httpd-pypies"
+        systemctl status httpd-pypies | grep Active
+    	#pypies_prc=`ps aux | grep httpd_pypies | grep -v grep | head -1 | awk '{ print $11 }'`
+    	#if [ -z $pypies_prc ]; then
+    	#	echo ' pypies      :: not running'
+    	#else
+    	#	pypiesPid=`ps aux | grep awips2\/httpd_pypies\/usr\/sbin\/httpd | grep -v grep | head -1 | awk '{ print $2 }'`
+    	#	echo ' pypies      :: running :: pid '$pypiesPid''
+    	#fi
 
 	# CHECK QPID
-	qpid_prc=`ps aux | grep qpid- | grep -v grep | head -1 | awk '{ print $11 }'`
-	if [ -z $qpid_prc ]; then
-		echo ' qpid        :: not running'
-	else
-		qpidPid=`ps aux | grep qpid- | grep -v grep | head -1 | awk '{ print $2 }'`
-		echo ' qpid        :: running :: pid '$qpidPid''
-	fi
+        echo "Checking qpidd"
+        systemctl status qpidd | grep Active
+	#qpid_prc=`ps aux | grep qpid- | grep -v grep | head -1 | awk '{ print $11 }'`
+	#if [ -z $qpid_prc ]; then
+	#	echo ' qpid        :: not running'
+	#else
+	#	qpidPid=`ps aux | grep qpid- | grep -v grep | head -1 | awk '{ print $2 }'`
+	#	echo ' qpid        :: running :: pid '$qpidPid''
+	#fi
 
 	# CHECK EDEX INGEST
+        echo "Checking edex_camel"
+        systemctl status edex_camel.target | grep Active
 	edex_ingest_ps=`ps aux | grep ingest | grep -v ingestGrib | grep -v ingestDat | awk '{ print $15 }'`
 	if [ -z $edex_ingest_ps ]; then
 		echo ' EDEXingest  :: not running'

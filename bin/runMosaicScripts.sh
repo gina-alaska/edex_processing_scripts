@@ -48,9 +48,9 @@ main() {
 	echo 'EDEXingest is running :: pid '$edex_ingest_pid''
    fi
    #
-   echo ""
-   echo "<<<<<<< Creating new regionasat Mosaics - `date` >>>>>>>>"
-   /home/awips/bin/makeMosaic.py 
+   #echo ""
+   #echo "<<<<<<< Creating new regionasat Mosaics - `date` >>>>>>>>"
+   #/home/awips/bin/makeMosaic.py 
    echo ""
    echo "<<<<<<< Creating new SCMI Mosaics - `date` >>>>>>>>"
    #/home/awips/bin/scmiMosaic.py 
