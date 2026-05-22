@@ -5,6 +5,7 @@ import argparse
 import os, sys
 import glob
 import gzip
+import subprocess
 from shutil import copy, move
 import datetime
 from datetime import datetime, timedelta
@@ -70,10 +71,15 @@ def main():
           bgntime  = datetime.utcnow()
           print ("Converting {} to Level 2: {}".format(channel, filepath))
           print ("Start time: {}Z".format(bgntime.strftime("%Y%m%d %H%M")))
-          #commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R ECONUS -S CONUS {}".format(filepath)
-          commandstr = "/home/awips/axi-tools/bin/cmi_changer.sh -E OT -R WCONUS -S CONUS {}".format(filepath)
+          #NOTE: for GOES-East substitute ECONUS for WCONUS
+          commandstr = "/opt/axi-tools/bin/cmi_changer.sh -E OT -R WCONUS -S CONUS {}".format(filepath)
+          print ("Cmd: {}".format(commandstr))
           try:
-             os.system(commandstr)
+             output = subprocess.check_output(commandstr, shell=True, text=True)
+             print(output)
+          except subprocess.CalledProcessError as e:
+             print(f"Command '{e.cmd}' returned non-zero exit status {e.returncode}.")
+             print(f"Error output: {e.output}")
           except:
              print ("Conversion was unsuccessful")
           #

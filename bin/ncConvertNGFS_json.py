@@ -70,8 +70,8 @@ def read_json_file(filepath,lat,lon,frp,conf,fcode,PA,qual,wfo,acqtime,pixtime):
       prop = feature['properties']
       lat.append(float(prop['latitude']))
       lon.append(float(prop["longitude"]))
-      acqtime.append(datetime.strptime(prop["acq_date_time"],"%Y-%m-%dT%H:%M:%SZ"))
-      pixtime.append(datetime.strptime(prop["pixel_date_time"],"%Y-%m-%dT%H:%M:%SZ"))
+      acqtime.append(datetime.strptime(prop["acq_date_time"],"%Y-%m-%dT%H:%M:%S.000Z"))
+      pixtime.append(datetime.strptime(prop["pixel_date_time"],"%Y-%m-%dT%H:%M:%S.000Z"))
       #actime = prop['acq_date_time']
       #pixime = prop['pixel_date_time']
       frp.append(float(prop["frp"])+.0011)  # FRP value

@@ -4,10 +4,11 @@
 import argparse
 import os, sys
 import gzip
-from shutil import copy, move
+from shutil import move
 import datetime
 from datetime import datetime
 import time
+import subprocess
 #sys.path.append('/home/awips/bin')
 from ncConvertNGFS_json import write_ngfsfires_ncfile, read_json_file, getnewpath
 
@@ -81,13 +82,35 @@ def main():
        # write to the new file
        write_ngfsfires_ncfile(newfilepath,sdate,edate,satname,numpts,lat,lon,frp,conf,fcode,PA,qual,wfo)
        print ("Converted file: {}".format(newfilepath))
+
        # move converted file to ingest
        print ("Moving {} to {}".format(newfilepath, ingestDir))
        try:
-          move(newfilepath,ingestDir)
-       except:
-          print ("Move to ingest failed. Removing converted file: {}".format(newfilepath))
-          print ("Removing: {}".format(newfilepath))
+          if not os.path.exists(newfilepath):
+             raise FileNotFoundError(f"Source file not found: {newfilepath}")
+          if not os.path.isdir(ingestDir):
+             raise NotADirectoryError(f"Destination directory not found: {ingestDir}")
+          move(newfilepath, ingestDir)
+          print("Moving was successful: {}".format(newfilepath))
+       except FileNotFoundError as e:
+          print(f"Move to ingest failed - file not found: {e}")
+          print("Removing: {}".format(newfilepath))
+       except NotADirectoryError as e:
+          print(f"Move to ingest failed - invalid destination: {e}")
+          print("Removing: {}".format(newfilepath))
+       except PermissionError as e:
+          print(f"Move to ingest failed - permission denied: {e}")
+          print("Removing: {}".format(newfilepath))
+       except Exception as e:
+          print(f"Move to ingest failed with unexpected error: {e}")
+          print("Removing: {}".format(newfilepath))
+
+       #try:
+       #   move(newfilepath,ingestDir)
+       #   print ("Moving was successful: {}".format(newfilepath))
+       #except:
+       #   print ("Move to ingest failed: {}".format(newfilepath))
+       #   print ("Removing: {}".format(newfilepath))
 
        print ("Removing: {}".format(filepath))
        os.remove(filepath)
